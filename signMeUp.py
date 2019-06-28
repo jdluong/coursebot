@@ -6,7 +6,7 @@ import time # for testing
 deptName = 'BME'
 courseNum = '160' 
 lectureCode = '13570'
-disCodes = ['13571','13572','']
+disCodes = ['13571','13572']
 
 username = 'jdluong'
 pw = 'jawnlu2v33'
