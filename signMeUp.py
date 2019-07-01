@@ -3,6 +3,8 @@ from selenium.webdriver.common.keys import Keys
 from bs4 import BeautifulSoup
 import time # for testing
 
+#### RetryLogin branch ####
+
 deptName = 'BME'
 courseNum = '160' 
 lectureCode = '13570'
@@ -67,8 +69,6 @@ while not OPEN:
 	if lectureCode in coursesDict['Lec']:
 		if coursesDict['Lec'][lectureCode] == 'OPEN':
 			OPEN = True
-
-	print(coursesDict)
 
 
 	###################################
