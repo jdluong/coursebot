@@ -14,12 +14,6 @@ disCodes = ['13571','13572']
 username = 'jdluong'
 pw = 'jawnlu2v33'
 
-<<<<<<< HEAD
-needToCheck = True
-=======
-needToCheck = True
->>>>>>> RetryLogin
-
 ###############################################
 ###############################################
 ##### CHECK IF CLASS IS OPEN THRU WEBSOC ######
