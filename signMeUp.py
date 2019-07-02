@@ -1,7 +1,10 @@
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from bs4 import BeautifulSoup
+from selenium.common.exceptions import NoSuchElementException # retry login?
 import time # for testing
+
+#### RetryLogin branch ####
 
 deptName = 'BME'
 courseNum = '160' 
@@ -11,7 +14,11 @@ disCodes = ['13571','13572']
 username = 'jdluong'
 pw = 'jawnlu2v33'
 
+<<<<<<< HEAD
 needToCheck = True
+=======
+needToCheck = True
+>>>>>>> RetryLogin
 
 ###############################################
 ###############################################
@@ -85,6 +92,8 @@ while not OPEN:
 	###################################
 	###################################
 
+	loggedIn = False
+
 	# IF LEC IS OPEN, start signing up process
 	if OPEN:
 
@@ -98,12 +107,42 @@ while not OPEN:
 		access_webreg = driver.find_element_by_xpath("//a[@href='https://www.reg.uci.edu/cgi-bin/webreg-redirect.sh']")
 		access_webreg.click()
 
-		# enter ucinetid and pw 
-		ucinetid = driver.find_element_by_name("ucinetid")
-		ucinetid.send_keys(username)
-		password = driver.find_element_by_name("password")
-		password.send_keys(pw)
-		password.send_keys('\ue007')
+
+		## TESTING
+		#######################
+		#### RETRY LOG IN #####
+		#######################
+		while not loggedIn:
+			# i wanna use a try-except block because the other way would be to read in the entire
+			# web page each time to check for the existence of the enrollment_menu window w/ BS, 
+			# but i feel like that'd take more time to do than just to keep trying to check for it
+			# w/ selenium, which throws an error, and then the error is handled. but it seems like
+			# that sounds like bad practice/an anti-pattern
+			try:
+				# enter ucinetid and pw 
+				ucinetid = driver.find_element_by_name("ucinetid")
+				ucinetid.send_keys(username)
+				password = driver.find_element_by_name("password")
+				password.send_keys(pw)
+				password.send_keys('\ue007')
+
+				# for testing
+				logout_button = driver.find_element_by_xpath("//input[@value='Logout'][@type='submit']")
+				logout_button.click()
+
+				# if enrollment_menu can't be found, then that means login wasn't successful
+				# exception is then handled in the except block
+				enrollment_menu = driver.find_element_by_xpath("//input[@class='WebRegButton'][@value='Enrollment Menu']")
+				loggedIn = True
+				print('logged in')
+			# if login was unsuccessful...
+			except NoSuchElementException as exception:
+				print("Can't log in. Retrying in one minute.")
+				time.sleep(60)
+				access_webreg = driver.find_element_by_xpath("//input[@type='submit'][@name='button'][@value='Access WebReg']")
+				access_webreg.click()
+		## TESTING
+
 
 		#######################
 		##### ADD LECTURE #####
