@@ -46,6 +46,9 @@ OPEN = False # keep refreshing and scraping until it's open
 
 while not OPEN:
 
+	#########################################################
+	##### if need to constantly check if class is open ######
+	#########################################################
 	if needToCheck:
 		html_page = driver.page_source # get html of the webpage
 		soup = BeautifulSoup(html_page,'html.parser') # parse html into stuff bs4 can read
