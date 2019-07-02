@@ -46,6 +46,7 @@ dept_dropdown.send_keys('\ue007')
 
 OPEN = False # keep refreshing and scraping until it's open
 
+
 while not OPEN:
 
 	#########################################################
@@ -166,9 +167,38 @@ while not OPEN:
 		####################
 
 		for disCode in disCodes: # for each discussion code, in order of priority as inputted...
-			# do we need to check if the discussion code is in the dict? or just do it?
-			if disCode in coursesDict['Dis']:
-				if coursesDict['Dis'][disCode] == "OPEN": # if that discussion is open...
+			if needToCheck:
+				# 1) do we need these following two if-statements if the point of this block
+				# is to go through the priority list in order and sign up for whichever's
+				# open first?
+				# 2) the primary reason i can think of to keep these is to ensure their codes
+				# are right? but would we even need the "OPEN" statement
+				# 3) but to make the code more concise (and without if-statements), it would
+				# make sense to forego these big if-statements for the needToCheck = False case,
+				# because we wouldn't have a coursesDict
+				if disCode in coursesDict['Dis']:
+					if coursesDict['Dis'][disCode] == "OPEN": # if that discussion is open...
+
+						# find add radio button and click it
+						add_radio = driver.find_element_by_xpath("//input[@type='radio'][@id='add']")
+						add_radio.click()
+
+						# find course code input box and enter current discussion code
+						courseCode_input = driver.find_element_by_name("courseCode")
+						courseCode_input.send_keys(disCode)
+
+						# find send request button and click it
+						sendRequest_button = driver.find_element_by_xpath("//input[@type='submit'][@value='Send Request']")
+						sendRequest_button.click()
+
+						# have to check if it was successfully added
+						checkSoup = BeautifulSoup(driver.page_source,'html.parser')
+						addedCheck = checkSoup.find_all("h2")
+						if addedCheck[0].string.strip() == "you have added": # if successfully added...
+							break # stop trying to add future discussions
+					else: # else, go to next discussion code 
+						pass
+			else:
 
 					# find add radio button and click it
 					add_radio = driver.find_element_by_xpath("//input[@type='radio'][@id='add']")
@@ -185,11 +215,11 @@ while not OPEN:
 					# have to check if it was successfully added
 					checkSoup = BeautifulSoup(driver.page_source,'html.parser')
 					addedCheck = checkSoup.find_all("h2")
-					print(addedCheck)
 					if addedCheck[0].string.strip() == "you have added": # if successfully added...
 						break # stop trying to add future discussions
 				else: # else, go to next discussion code 
 					pass
+		# should add if a discussion was signed up for; if not keep trying
 
 	else: # IF CLASS ISN'T OPEN YET, wait 2 sec, refresh, check again
 		print("not open yet! trying again in 2 seconds..")
