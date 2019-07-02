@@ -1,10 +1,9 @@
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from bs4 import BeautifulSoup
-from selenium.common.exceptions import NoSuchElementException # retry login?
+from selenium.common.exceptions import NoSuchElementException # retry login
 import time # for testing
 
-#### RetryLogin branch ####
 
 deptName = 'BME'
 courseNum = '160' 
@@ -165,7 +164,7 @@ while not OPEN:
 		####################
 		##### ADD DIS ###### this is obnoxious because look below
 		####################
-
+		
 		for disCode in disCodes: # for each discussion code, in order of priority as inputted...
 			if needToCheck:
 				# 1) do we need these following two if-statements if the point of this block
