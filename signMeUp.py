@@ -1,6 +1,7 @@
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from bs4 import BeautifulSoup
+from selenium.common.exceptions import NoSuchElementException # retry login?
 import time # for testing
 
 #### RetryLogin branch ####
@@ -12,6 +13,8 @@ disCodes = ['13571','13572']
 
 username = 'jdluong'
 pw = 'jawnlu2v33'
+
+needToCheck =  True
 
 ###############################################
 ###############################################
@@ -45,30 +48,37 @@ OPEN = False # keep refreshing and scraping until it's open
 
 while not OPEN:
 
-	html_page = driver.page_source # get html of the webpage
-	soup = BeautifulSoup(html_page,'html.parser') # parse html into stuff bs4 can read
+	#########################################################
+	##### if need to constantly check if class is open ######
+	#########################################################
+	if needToCheck:
+		html_page = driver.page_source # get html of the webpage
+		soup = BeautifulSoup(html_page,'html.parser') # parse html into stuff bs4 can read
 
-	rows = soup.find_all("tr", valign="top")[1::] # gets the rows containing data
-	coursesDict = {} # will populate with lec, dis, and/or lab codes
-	tempDict = {} 
-	for row in rows:
-		tempArray = [] # contains data per course; reinitialized each row
-		for children in row.children: # can do same with rows[0] (w/o .children)
-			tempArray.append(children.string) # make a list of each column's string, per element
-			# should we do things AFTER the list is made, or AS the list is made?
+		rows = soup.find_all("tr", valign="top")[1::] # gets the rows containing data
+		coursesDict = {} # will populate with lec, dis, and/or lab codes
+		tempDict = {} 
+		for row in rows:
+			tempArray = [] # contains data per course; reinitialized each row
+			for children in row.children: # can do same with rows[0] (w/o .children)
+				tempArray.append(children.string) # make a list of each column's string, per element
+				# should we do things AFTER the list is made, or AS the list is made?
 
-		# SHOULD WE ONLY ADD COURSES THAT ARE OPEN???? 
-		if tempArray[1] not in coursesDict: # for course types that aren't in the dict yet, add it
-			tempDict[tempArray[0]] = tempArray[-1]
-			coursesDict[tempArray[1]] = tempDict
-			tempDict = {}
-		else: 
-			coursesDict[tempArray[1]][tempArray[0]] = tempArray[-1]
+			# SHOULD WE ONLY ADD COURSES THAT ARE OPEN????
+			if tempArray[1] not in coursesDict: # for course types that aren't in the dict yet, add it
+				tempDict[tempArray[0]] = tempArray[-1]
+				coursesDict[tempArray[1]] = tempDict
+				tempDict = {}
+			else: 
+				coursesDict[tempArray[1]][tempArray[0]] = tempArray[-1]
 
-	# after getting statuses of all courses, check if lecture is open
-	if lectureCode in coursesDict['Lec']:
-		if coursesDict['Lec'][lectureCode] == 'OPEN':
-			OPEN = True
+		# after getting statuses of all courses, check if lecture is open
+		if lectureCode in coursesDict['Lec']:
+			if coursesDict['Lec'][lectureCode] == 'OPEN':
+				OPEN = True
+
+	else:
+		OPEN = True
 
 
 	###################################
@@ -76,6 +86,8 @@ while not OPEN:
 	###### SIGNING UP IN WEBREG #######
 	###################################
 	###################################
+
+	loggedIn = False
 
 	# IF LEC IS OPEN, start signing up process
 	if OPEN:
@@ -90,12 +102,42 @@ while not OPEN:
 		access_webreg = driver.find_element_by_xpath("//a[@href='https://www.reg.uci.edu/cgi-bin/webreg-redirect.sh']")
 		access_webreg.click()
 
-		# enter ucinetid and pw 
-		ucinetid = driver.find_element_by_name("ucinetid")
-		ucinetid.send_keys(username)
-		password = driver.find_element_by_name("password")
-		password.send_keys(pw)
-		password.send_keys('\ue007')
+
+		## TESTING
+		#######################
+		#### RETRY LOG IN #####
+		#######################
+		while not loggedIn:
+			# i wanna use a try-except block because the other way would be to read in the entire
+			# web page each time to check for the existence of the enrollment_menu window w/ BS, 
+			# but i feel like that'd take more time to do than just to keep trying to check for it
+			# w/ selenium, which throws an error, and then the error is handled. but it seems like
+			# that sounds like bad practice/an anti-pattern
+			try:
+				# enter ucinetid and pw 
+				ucinetid = driver.find_element_by_name("ucinetid")
+				ucinetid.send_keys(username)
+				password = driver.find_element_by_name("password")
+				password.send_keys(pw)
+				password.send_keys('\ue007')
+
+				# for testing
+				logout_button = driver.find_element_by_xpath("//input[@value='Logout'][@type='submit']")
+				logout_button.click()
+
+				# if enrollment_menu can't be found, then that means login wasn't successful
+				# exception is then handled in the except block
+				enrollment_menu = driver.find_element_by_xpath("//input[@class='WebRegButton'][@value='Enrollment Menu']")
+				loggedIn = True
+				print('logged in')
+			# if login was unsuccessful...
+			except NoSuchElementException as exception:
+				print("Can't log in. Retrying in one minute.")
+				time.sleep(60)
+				access_webreg = driver.find_element_by_xpath("//input[@type='submit'][@name='button'][@value='Access WebReg']")
+				access_webreg.click()
+		## TESTING
+
 
 		#######################
 		##### ADD LECTURE #####
@@ -124,6 +166,7 @@ while not OPEN:
 		####################
 
 		for disCode in disCodes: # for each discussion code, in order of priority as inputted...
+			# do we need to check if the discussion code is in the dict? or just do it?
 			if disCode in coursesDict['Dis']:
 				if coursesDict['Dis'][disCode] == "OPEN": # if that discussion is open...
 
@@ -142,6 +185,7 @@ while not OPEN:
 					# have to check if it was successfully added
 					checkSoup = BeautifulSoup(driver.page_source,'html.parser')
 					addedCheck = checkSoup.find_all("h2")
+					print(addedCheck)
 					if addedCheck[0].string.strip() == "you have added": # if successfully added...
 						break # stop trying to add future discussions
 				else: # else, go to next discussion code 
