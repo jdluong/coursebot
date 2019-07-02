@@ -14,6 +14,8 @@ disCodes = ['13571','13572']
 username = 'jdluong'
 pw = 'jawnlu2v33'
 
+needToCheck = True
+
 ###############################################
 ###############################################
 ##### CHECK IF CLASS IS OPEN THRU WEBSOC ######
