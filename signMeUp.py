@@ -204,23 +204,23 @@ while not OPEN:
 							pass
 				else:
 
-						# find add radio button and click it
-						add_radio = driver.find_element_by_xpath("//input[@type='radio'][@id='add']")
-						add_radio.click()
+					# find add radio button and click it
+					add_radio = driver.find_element_by_xpath("//input[@type='radio'][@id='add']")
+					add_radio.click()
 
-						# find course code input box and enter current discussion code
-						courseCode_input = driver.find_element_by_name("courseCode")
-						courseCode_input.send_keys(disCode)
+					# find course code input box and enter current discussion code
+					courseCode_input = driver.find_element_by_name("courseCode")
+					courseCode_input.send_keys(disCode)
 
-						# find send request button and click it
-						sendRequest_button = driver.find_element_by_xpath("//input[@type='submit'][@value='Send Request']")
-						sendRequest_button.click()
+					# find send request button and click it
+					sendRequest_button = driver.find_element_by_xpath("//input[@type='submit'][@value='Send Request']")
+					sendRequest_button.click()
 
-						# have to check if it was successfully added
-						checkSoup = BeautifulSoup(driver.page_source,'html.parser')
-						addedCheck = checkSoup.find_all("h2")
-						if addedCheck[0].string.strip() == "you have added": # if successfully added...
-							break # stop trying to add future discussions
+					# have to check if it was successfully added
+					checkSoup = BeautifulSoup(driver.page_source,'html.parser')
+					addedCheck = checkSoup.find_all("h2")
+					if addedCheck[0].string.strip() == "you have added": # if successfully added...
+						break # stop trying to add future discussions
 					else: # else, go to next discussion code 
 						pass
 			# should add if a discussion was signed up for; if not keep trying
