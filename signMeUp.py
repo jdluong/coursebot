@@ -121,9 +121,10 @@ while not OPEN:
 				password.send_keys(pw)
 				password.send_keys('\ue007')
 
-				# for testing
-				logout_button = driver.find_element_by_xpath("//input[@value='Logout'][@type='submit']")
-				logout_button.click()
+				# # for testing
+				# logout_button = driver.find_element_by_xpath("//input[@value='Logout'][@type='submit']")
+				# logout_button.click()
+				# # for testing
 
 				# if enrollment_menu can't be found, then that means login wasn't successful
 				# exception is then handled in the except block
