@@ -201,8 +201,7 @@ while not OPEN:
 							checkSoup = BeautifulSoup(driver.page_source,'html.parser')
 							addedCheck = checkSoup.find_all("h2")
 							if addedCheck[0].string.strip() == "you have added": # if successfully added...
-								print("you got your priority #", prio+1, "for lecture", lectureCode[lectureInd])
-								time.sleep(2)
+								print('you got your priority #', prio+1, 'for lecture', lectureCode[lectureInd])
 								break # stop trying to add future discussions
 						else: # else, go to next discussion code 
 							pass
@@ -224,6 +223,7 @@ while not OPEN:
 					checkSoup = BeautifulSoup(driver.page_source,'html.parser')
 					addedCheck = checkSoup.find_all("h2")
 					if addedCheck[0].string.strip() == "you have added": # if successfully added...
+						print('you got your priority #', prio+1, 'for lecture', lectureCode[lectureInd])
 						break # stop trying to add future discussions
 					else: # else, go to next discussion code 
 						pass
