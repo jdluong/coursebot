@@ -140,9 +140,9 @@ while not OPEN:
 				access_webreg.click()
 		## TESTING
 
-		#######################
-		## MULTIPLE CLASSES ###
-		#######################
+		########################
+		### MULTIPLE CLASSES ###
+		########################
 
 		for lectureInd in range(len(lectureCode)):
 
@@ -172,7 +172,7 @@ while not OPEN:
 			##### ADD DIS ###### this is obnoxious because look below
 			####################
 
-			for disCode in disCodes[lectureInd]: # for each discussion code, in order of priority as inputted...
+			for prio, disCode in enumerate(disCodes[lectureInd]): # for each discussion code, in order of priority as inputted...
 				if needToCheck:
 					# 1) do we need these following two if-statements if the point of this block
 					# is to go through the priority list in order and sign up for whichever's
@@ -201,6 +201,8 @@ while not OPEN:
 							checkSoup = BeautifulSoup(driver.page_source,'html.parser')
 							addedCheck = checkSoup.find_all("h2")
 							if addedCheck[0].string.strip() == "you have added": # if successfully added...
+								print("you got your priority #", prio+1, "for lecture", lectureCode[lectureInd])
+								time.sleep(2)
 								break # stop trying to add future discussions
 						else: # else, go to next discussion code 
 							pass
