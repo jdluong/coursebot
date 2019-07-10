@@ -150,10 +150,6 @@ while not OPEN:
 			##### ADD LECTURE #####
 			#######################
 
-			# # finds enrollment menu button and clicks it
-			# enrollment_menu = driver.find_element_by_xpath("//input[@class='WebRegButton'][@value='Enrollment Menu']")
-			# enrollment_menu.click()
-
 			# finds "add" radio button and clicks it
 			add_radio = driver.find_element_by_xpath("//input[@type='radio'][@id='add']")
 			add_radio.click()
@@ -236,6 +232,5 @@ while not OPEN:
 		driver.refresh()
 
 #### CHECK MULTIPLE LECTURES/CLASSES
-#### MAKE IT RELOG EVERY MINUTE IF IT'S NOT IN ENROLLMENT MENU
 
 # driver.quit()
