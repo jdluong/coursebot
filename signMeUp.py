@@ -15,43 +15,48 @@ pw = 'jawnlu2v33'
 
 needToCheck = False
 
-###############################################
-###############################################
-##### CHECK IF CLASS IS OPEN THRU WEBSOC ######
-###############################################
-###############################################
-
-###############################
-##### OPENING THE BROWSER #####
-###############################
+###				  ###
+### START PROGRAM ###
+###				  ###
 
 driver = webdriver.Chrome() # open chrome window
 
-driver.get("https://www.reg.uci.edu/perl/WebSoc") # go to WebSOC site
+#########################################################
+##### if need to constantly check if class is open ######
+#########################################################
 
-# finds course number box and enter desired course number
-courseNum_box = driver.find_element_by_name('CourseNum')
-courseNum_box.click()
-courseNum_box.send_keys(courseNum)
+if needToCheck:
 
-# finds department dropdown element, select desired dept, and press enter
-dept_dropdown = driver.find_element_by_name('Dept')
-dept_dropdown.send_keys(deptName) 
-dept_dropdown.send_keys('\ue007') 
+	###############################################
+	###############################################
+	##### CHECK IF CLASS IS OPEN THRU WEBSOC ######
+	###############################################
+	###############################################
 
-#######################
-##### THE SCRAPE ######
-#######################
+	###############################
+	##### OPENING THE BROWSER #####
+	###############################
 
-OPEN = False # keep refreshing and scraping until it's open
+	driver.get("https://www.reg.uci.edu/perl/WebSoc") # go to WebSOC site
 
+	# finds course number box and enter desired course number
+	courseNum_box = driver.find_element_by_name('CourseNum')
+	courseNum_box.click()
+	courseNum_box.send_keys(courseNum)
 
-while not OPEN:
+	# finds department dropdown element, select desired dept, and press enter
+	dept_dropdown = driver.find_element_by_name('Dept')
+	dept_dropdown.send_keys(deptName) 
+	dept_dropdown.send_keys('\ue007') 
 
-	#########################################################
-	##### if need to constantly check if class is open ######
-	#########################################################
-	if needToCheck:
+	#######################
+	##### THE SCRAPE ######
+	#######################
+
+	OPEN = False # keep refreshing and scraping until it's open
+
+	while not OPEN:
+		
 		html_page = driver.page_source # get html of the webpage
 		soup = BeautifulSoup(html_page,'html.parser') # parse html into stuff bs4 can read
 
@@ -73,136 +78,109 @@ while not OPEN:
 				coursesDict[tempArray[1]][tempArray[0]] = tempArray[-1]
 
 		# after getting statuses of all courses, check if lecture is open
-		if lectureCode in coursesDict['Lec']:
-			if coursesDict['Lec'][lectureCode] == 'OPEN':
-				OPEN = True
+		if coursesDict['Lec'][lectureCode] == 'OPEN':
+			OPEN = True
+		else: # if it's not open yet, wait 2 sec, refresh, check again
+			print("not open yet! trying again in 2 seconds..")
+			time.sleep(2)
+			driver.refresh()
 
-	else:
-		OPEN = True
+
+###################################
+###################################
+###### SIGNING UP IN WEBREG #######
+###################################
+###################################
+
+#######################
+##### SIGNING IN ######
+#######################
+
+driver.get("https://www.reg.uci.edu/registrar/soc/webreg.html") # go to webreg site
+
+# gets the access webreg element, and clicks it
+access_webreg = driver.find_element_by_xpath("//a[@href='https://www.reg.uci.edu/cgi-bin/webreg-redirect.sh']")
+access_webreg.click()
 
 
-	###################################
-	###################################
-	###### SIGNING UP IN WEBREG #######
-	###################################
-	###################################
+#######################
+#### RETRY LOG IN #####
+#######################
+loggedIn = False
+while not loggedIn:
+	# i wanna use a try-except block because the other way would be to read in the entire
+	# web page each time to check for the existence of the enrollment_menu window w/ BS, 
+	# but i feel like that'd take more time to do than just to keep trying to check for it
+	# w/ selenium, which throws an error, and then the error is handled. but it seems like
+	# that sounds like bad practice/an anti-pattern
+	try:
+		# enter ucinetid and pw 
+		ucinetid = driver.find_element_by_name("ucinetid")
+		ucinetid.send_keys(username)
+		password = driver.find_element_by_name("password")
+		password.send_keys(pw)
+		password.send_keys('\ue007')
 
-	loggedIn = False
+		# # for testing
+		# logout_button = driver.find_element_by_xpath("//input[@value='Logout'][@type='submit']")
+		# logout_button.click()
+		# # for testing
 
-	# IF LEC IS OPEN, start signing up process
-	if OPEN:
-
-		#######################
-		##### SIGNING IN ######
-		#######################
-
-		driver.get("https://www.reg.uci.edu/registrar/soc/webreg.html") # go to webreg site
-
-		# gets the access webreg element, and clicks it
-		access_webreg = driver.find_element_by_xpath("//a[@href='https://www.reg.uci.edu/cgi-bin/webreg-redirect.sh']")
+		# if enrollment_menu can't be found, then that means login wasn't successful
+		# exception is then handled in the except block
+		enrollment_menu = driver.find_element_by_xpath("//input[@class='WebRegButton'][@value='Enrollment Menu']")
+		enrollment_menu.click()
+		loggedIn = True
+		print('logged in')
+	# if login was unsuccessful...
+	except NoSuchElementException as exception:
+		print("Can't log in. Retrying in one minute.")
+		time.sleep(60)
+		access_webreg = driver.find_element_by_xpath("//input[@type='submit'][@name='button'][@value='Access WebReg']")
 		access_webreg.click()
 
+# ONCE SUCCESSFULLY LOGGED IN...
 
-		## TESTING
-		#######################
-		#### RETRY LOG IN #####
-		#######################
-		while not loggedIn:
-			# i wanna use a try-except block because the other way would be to read in the entire
-			# web page each time to check for the existence of the enrollment_menu window w/ BS, 
-			# but i feel like that'd take more time to do than just to keep trying to check for it
-			# w/ selenium, which throws an error, and then the error is handled. but it seems like
-			# that sounds like bad practice/an anti-pattern
-			try:
-				# enter ucinetid and pw 
-				ucinetid = driver.find_element_by_name("ucinetid")
-				ucinetid.send_keys(username)
-				password = driver.find_element_by_name("password")
-				password.send_keys(pw)
-				password.send_keys('\ue007')
+########################
+### MULTIPLE CLASSES ###
+########################
 
-				# # for testing
-				# logout_button = driver.find_element_by_xpath("//input[@value='Logout'][@type='submit']")
-				# logout_button.click()
-				# # for testing
+for lectureInd in range(len(lectureCode)):
 
-				# if enrollment_menu can't be found, then that means login wasn't successful
-				# exception is then handled in the except block
-				enrollment_menu = driver.find_element_by_xpath("//input[@class='WebRegButton'][@value='Enrollment Menu']")
-				enrollment_menu.click()
-				loggedIn = True
-				print('logged in')
-			# if login was unsuccessful...
-			except NoSuchElementException as exception:
-				print("Can't log in. Retrying in one minute.")
-				time.sleep(60)
-				access_webreg = driver.find_element_by_xpath("//input[@type='submit'][@name='button'][@value='Access WebReg']")
-				access_webreg.click()
-		## TESTING
+	#######################
+	##### ADD LECTURE #####
+	#######################
 
-		########################
-		### MULTIPLE CLASSES ###
-		########################
+	# finds "add" radio button and clicks it
+	add_radio = driver.find_element_by_xpath("//input[@type='radio'][@id='add']")
+	add_radio.click()
 
-		for lectureInd in range(len(lectureCode)):
+	# finds the input box for the code, input the lecture code, and submits it
+	courseCode_input = driver.find_element_by_name("courseCode")
+	courseCode_input.send_keys(lectureCode[lectureInd])
 
-			#######################
-			##### ADD LECTURE #####
-			#######################
+	# find the send request button and press it
+	sendRequest_button = driver.find_element_by_xpath("//input[@type='submit'][@value='Send Request']")
+	sendRequest_button.click()
 
-			# finds "add" radio button and clicks it
-			add_radio = driver.find_element_by_xpath("//input[@type='radio'][@id='add']")
-			add_radio.click()
+	# should check if signing up for lecture is successful; if not, repeat
 
-			# finds the input box for the code, input the lecture code, and submits it
-			courseCode_input = driver.find_element_by_name("courseCode")
-			courseCode_input.send_keys(lectureCode[lectureInd])
+	####################
+	##### ADD DIS ###### this is obnoxious because look below
+	####################
 
-			# find the send request button and press it
-			sendRequest_button = driver.find_element_by_xpath("//input[@type='submit'][@value='Send Request']")
-			sendRequest_button.click()
-
-			# should check if signing up for lecture is successful; if not, repeat
-
-			####################
-			##### ADD DIS ###### this is obnoxious because look below
-			####################
-
-			for prio, disCode in enumerate(disCodes[lectureInd]): # for each discussion code, in order of priority as inputted...
-				if needToCheck:
-					# 1) do we need these following two if-statements if the point of this block
-					# is to go through the priority list in order and sign up for whichever's
-					# open first?
-					# 2) the primary reason i can think of to keep these is to ensure their codes
-					# are right? but would we even need the "OPEN" statement
-					# 3) but to make the code more concise (and without if-statements), it would
-					# make sense to forego these big if-statements for the needToCheck = False case,
-					# because we wouldn't have a coursesDict
-					if disCode in coursesDict['Dis']:
-						if coursesDict['Dis'][disCode] == "OPEN": # if that discussion is open...
-
-							# find add radio button and click it
-							add_radio = driver.find_element_by_xpath("//input[@type='radio'][@id='add']")
-							add_radio.click()
-
-							# find course code input box and enter current discussion code
-							courseCode_input = driver.find_element_by_name("courseCode")
-							courseCode_input.send_keys(disCode)
-
-							# find send request button and click it
-							sendRequest_button = driver.find_element_by_xpath("//input[@type='submit'][@value='Send Request']")
-							sendRequest_button.click()
-
-							# have to check if it was successfully added
-							checkSoup = BeautifulSoup(driver.page_source,'html.parser')
-							addedCheck = checkSoup.find_all("h2")
-							if addedCheck[0].string.strip() == "you have added": # if successfully added...
-								print('you got your priority #', prio+1, 'for lecture', lectureCode[lectureInd])
-								break # stop trying to add future discussions
-						else: # else, go to next discussion code 
-							pass
-				else:
-
+	for prio, disCode in enumerate(disCodes[lectureInd]): # for each discussion code, in order of priority as inputted...
+		if needToCheck:
+			# 1) do we need these following two if-statements if the point of this block
+			# is to go through the priority list in order and sign up for whichever's
+			# open first?
+			# 2) the primary reason i can think of to keep these is to ensure their codes
+			# are right? but would we even need the "OPEN" statement
+			# 3) but to make the code more concise (and without if-statements), it would
+			# make sense to forego these big if-statements for the needToCheck = False case,
+			# because we wouldn't have a coursesDict
+			if disCode in coursesDict['Dis']:
+				if coursesDict['Dis'][disCode] == "OPEN": # if that discussion is open...
 					# find add radio button and click it
 					add_radio = driver.find_element_by_xpath("//input[@type='radio'][@id='add']")
 					add_radio.click()
@@ -221,16 +199,35 @@ while not OPEN:
 					if addedCheck[0].string.strip() == "you have added": # if successfully added...
 						print('you got your priority #', prio+1, 'for lecture', lectureCode[lectureInd])
 						break # stop trying to add future discussions
-					else: # else, go to next discussion code 
-						pass
-			# should add if a discussion was signed up for; if not keep trying
+				else: # else, go to next discussion code 
+					pass
+		else:
+			# find add radio button and click it
+			add_radio = driver.find_element_by_xpath("//input[@type='radio'][@id='add']")
+			add_radio.click()
 
-	else: # IF CLASS ISN'T OPEN YET, wait 2 sec, refresh, check again
-	# should move this up; make it flow better and less confusing
-		print("not open yet! trying again in 2 seconds..")
-		time.sleep(2)
-		driver.refresh()
+			# find course code input box and enter current discussion code
+			courseCode_input = driver.find_element_by_name("courseCode")
+			courseCode_input.send_keys(disCode)
 
-#### CHECK MULTIPLE LECTURES/CLASSES
+			# find send request button and click it
+			sendRequest_button = driver.find_element_by_xpath("//input[@type='submit'][@value='Send Request']")
+			sendRequest_button.click()
+
+			# have to check if it was successfully added
+			checkSoup = BeautifulSoup(driver.page_source,'html.parser')
+			addedCheck = checkSoup.find_all("h2")
+
+			if addedCheck[0].string.strip() == "you have added": # if successfully added...
+				print('you got your priority #', prio+1, 'for lecture', lectureCode[lectureInd])
+				break # stop trying to add future discussions
+			else: # else, go to next discussion code 
+				pass
+	# should add if a discussion was signed up for; if not keep trying
+
 
 # driver.quit()
+
+###			    ###
+### END PROGRAM ###
+###		    	###
