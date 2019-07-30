@@ -1,61 +1,48 @@
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from bs4 import BeautifulSoup
-from selenium.common.exceptions import NoSuchElementException # retry login
+import requests
+
+from selenium.common.exceptions import NoSuchElementException # for retry login
 import re # regex
 import time # for testing
-
-
-deptName = 'BME'
-courseNum = '160'
-lectureCode = ['13570','13515']
-# 160 --- 13570: open
-# 60B --- 13515: open
-# 180A --- 13580: full
-disCodes = [['13573','13572'],['13518','13516']]
-# 160 --- 13573: full; 13571: open; 13572: open
-# 60B --- 13518: time conflict; 13516: open
-# 180A --- 13582: full; 13583: open
-classNames = ['BME 160','BME 60B']
-
-username = 'jdluong'
-pw = 'jawnlu2v33'
-
-needToCheck = False
 
 ###				  ###
 ### START PROGRAM ###
 ###				  ###
 
-driver = webdriver.Chrome() # open chrome window
+###############################################
+###############################################
+##### CHECK IF CLASS IS OPEN THRU WEBSOC ######
+###############################################
+###############################################
 
 #########################################################
 ##### if need to constantly check if class is open ######
 #########################################################
 
+deptName = 'I&C SCI'
+courseNum = '33'
+
+lectureCodeScrape = '35500'
+
+url = 'https://www.reg.uci.edu/perl/WebSoc'
+params = {'Submit':'Display Web',
+			'YearTerm':'2019-92',
+			'ShowComments':'on',
+			'ShowFinals':'on',
+			'Breadth':'ANY',
+			'Dept':deptName,
+			'CourseNum':courseNum,
+			'Division':'ANY',
+			'ClassType':'ALL',
+			'FullCourses':'ANY',
+			'FontSize':'100',
+			'CancelledCourses':'Exclude'}
+
+needToCheck = True
+
 if needToCheck:
-
-	###############################################
-	###############################################
-	##### CHECK IF CLASS IS OPEN THRU WEBSOC ######
-	###############################################
-	###############################################
-
-	###############################
-	##### OPENING THE BROWSER #####
-	###############################
-
-	driver.get("https://www.reg.uci.edu/perl/WebSoc") # go to WebSOC site
-
-	# finds course number box and enter desired course number
-	courseNum_box = driver.find_element_by_name('CourseNum')
-	courseNum_box.click()
-	courseNum_box.send_keys(courseNum)
-
-	# finds department dropdown element, select desired dept, and press enter
-	dept_dropdown = driver.find_element_by_name('Dept')
-	dept_dropdown.send_keys(deptName) 
-	dept_dropdown.send_keys('\ue007') 
 
 	#######################
 	##### THE SCRAPE ######
@@ -64,8 +51,9 @@ if needToCheck:
 	OPEN = False # keep refreshing and scraping until it's open
 
 	while not OPEN:
-		
-		html_page = driver.page_source # get html of the webpage
+
+		html_page = requests.post(url,data=params).text
+	
 		soup = BeautifulSoup(html_page,'html.parser') # parse html into stuff bs4 can read
 
 		rows = soup.find_all("tr", valign="top")[1::] # gets the rows containing data
@@ -86,13 +74,13 @@ if needToCheck:
 				coursesDict[tempArray[1]][tempArray[0]] = tempArray[-1]
 
 		# after getting statuses of all courses, check if lecture is open
-		if coursesDict['Lec'][lectureCode] == 'OPEN':
+		print(coursesDict)
+		if coursesDict['Lec'][lectureCodeScrape] == 'OPEN':
 			OPEN = True
 		else: # if it's not open yet, wait 2 sec, refresh, check again
 			print("not open yet! trying again in 2 seconds..")
 			time.sleep(2)
 			driver.refresh()
-
 
 ###################################
 ###################################
@@ -104,6 +92,20 @@ if needToCheck:
 ##### SIGNING IN ######
 #######################
 
+lectureCodes = ['13570','13515']
+# 160 --- 13570: open
+# 60B --- 13515: open
+# 180A --- 13580: full
+disCodes = [['13573','13572'],['13518','13516']]
+# 160 --- 13573: full; 13571: open; 13572: open
+# 60B --- 13518: time conflict; 13516: open
+# 180A --- 13582: full; 13583: open
+classNames = ['BME 160','BME 60B']
+
+username = 'jdluong'
+pw = 'jawnlu2v33'
+
+driver = webdriver.Chrome() # open chrome window
 
 driver.get("https://www.reg.uci.edu/registrar/soc/webreg.html") # go to webreg site
 
@@ -156,8 +158,8 @@ while not loggedIn:
 ########################
 
 # some data structures to indicate that lec and dis are successfull
-lecEnrolled = [False] * len(lectureCode)
-disEnrolled = [False] * len(lectureCode)
+lecEnrolled = [False] * len(lectureCodes)
+disEnrolled = [False] * len(lectureCodes)
 tries = 0
 # maybe a while loop saying while False in lecEnrolled or False in disEnrolled?
 # but how would we get it to try to sign up for lec/dis that is False? 
@@ -168,26 +170,15 @@ while False in lecEnrolled or False in disEnrolled:
 	# testing
 
 	tries += 1
-	print("\n----------------------------------------------------------\n")
+	print("\n---------------------------------------------------------------------------\n")
 	print("***************")
 	print("*** TRY #",tries,"***")
 	print("***************")
-	# for i in range(len(lecEnrolled)):
-	# 	if lecEnrolled[i] and disEnrolled[i]:
-	# 		print("Successfully enrolled for LEC and DIS for", classNames[i])
-	# 	else:
-	# 		print("Still need to sign up for",classNames[i])
-	# 		if not lecEnrolled[i]:
-	# 			print('- need LEC')
-	# 		if not disEnrolled[i]:
-	# 			print('- need DIS')
 
-	# testing
-
-	for lectureInd in range(len(lectureCode)):
+	for lectureInd in range(len(lectureCodes)):
 
 		print('\n---------')
-		print(classNames[lectureInd],' |')
+		print(classNames[lectureInd],'|')
 		print('---------')
 
 		#######################
@@ -201,7 +192,7 @@ while False in lecEnrolled or False in disEnrolled:
 
 			# finds the input box for the code, input the lecture code, and submits it
 			courseCode_input = driver.find_element_by_name("courseCode")
-			courseCode_input.send_keys(lectureCode[lectureInd])
+			courseCode_input.send_keys(lectureCodes[lectureInd])
 
 			# find the send request button and press it
 			sendRequest_button = driver.find_element_by_xpath("//input[@type='submit'][@value='Send Request']")
@@ -255,7 +246,7 @@ while False in lecEnrolled or False in disEnrolled:
 							checkSoup = BeautifulSoup(driver.page_source,'html.parser')
 							addedCheck = checkSoup.find_all("h2")
 							if addedCheck[0].string.strip() == "you have added": # if successfully added AFTER lecture...
-								print('you got your priority #', prio+1, 'for lecture', lectureCode[lectureInd])
+								print('you got your priority #', prio+1, 'for lecture', lectureCodes[lectureInd])
 								disEnrolled[lectureInd] == True
 								break # stop trying to add future discussions
 						else: # else, go to next discussion code 
