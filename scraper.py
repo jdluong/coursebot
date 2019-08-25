@@ -98,8 +98,12 @@ class Scraper:
             server.starttls()
             # login to throwaway email
             server.login(config.EMAIL_ADDRESS,config.PASSWORD)
-            #send message
-            message = 'Subject: {}\n\n{}'.format('email test',str(coursesDict))
+            # create and send email
+            subject = "Subject: {subject}\n\n".format(subject=self.deptName+self.courseNum+" has an opening!")
+            body1 = self.deptName+self.courseNum+" has just been updated. Here are the changes:\n\n"
+            body2 = json.dumps(self.coursesDict, indent=2)
+            # message = 'Subject: {}\n\n{}'.format('email test',body
+            message = subject+body1+body2
             server.sendmail(config.EMAIL_ADDRESS,config.EMAIL_ADDRESS,message)
             server.quit()
             print("Email sent!")
