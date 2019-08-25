@@ -1,7 +1,9 @@
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from bs4 import BeautifulSoup
-import requests # to download html
+from scraper import Scraper
+
+import requests 
 import smtplib
 import config
 
@@ -93,7 +95,6 @@ if needToCheck:
 		else: # if it's not open yet, wait 2 sec, refresh, check again
 			print("not open yet! trying again in 2 seconds..")
 			time.sleep(2)
-			driver.refresh()
 
 time.sleep(60)
 
