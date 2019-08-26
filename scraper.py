@@ -2,11 +2,12 @@ from bs4 import BeautifulSoup
 import requests
 import time
 import smtplib
+import json
 import config
 
 class Scraper:
 
-    def __init__(self, deptName, courseNum, waitTime):
+    def __init__(self, deptName, courseNum):
         self.deptName = deptName
         self.courseNum = courseNum
         self.BASE_URL = "https://www.reg.uci.edu/perl/WebSoc"
@@ -43,12 +44,12 @@ class Scraper:
         while not connected:
             try:
                 html_page = requests.post(url,data=params).text # download html of webpage
-                html_page.raise_for_status()
+                # html_page.raise_for_status() # for some reason method doesn't work?
                 connected = True
                 return BeautifulSoup(html_page,'html.parser')
-            except requests.exceptions.HTTPError as httpError:
-                print("HTTP Error:",httpError)
-                time.sleep(2)
+            # except requests.exceptions.HTTPError as httpError:
+            #     print("HTTP Error:",httpError)
+            #     time.sleep(2)
             except requests.exceptions.ConnectTimeout:
                 print("Took too long to connect to the server.")
                 time.sleep(2)
@@ -92,6 +93,7 @@ class Scraper:
         type receiver: string
         """
         try:
+            start = time.time()
             # setting up server
             server = smtplib.SMTP('smtp.gmail.com:587')
             server.ehlo()
@@ -99,15 +101,16 @@ class Scraper:
             # login to throwaway email
             server.login(config.EMAIL_ADDRESS,config.PASSWORD)
             # create and send email
-            subject = "Subject: {subject}\n\n".format(subject=self.deptName+self.courseNum+" has an opening!")
-            body1 = self.deptName+self.courseNum+" has just been updated. Here are the changes:\n\n"
+            subject = "Subject: {subject}\n\n".format(subject=self.deptName+" "+self.courseNum+" has an opening!")
+            body1 = self.deptName+" "+self.courseNum+" has just been updated. Here are the changes:\n\n"
             body2 = json.dumps(self.coursesDict, indent=2)
-            # message = 'Subject: {}\n\n{}'.format('email test',body
+            # message = 'Subject: {}\n\n{}'.format('email test',body)
             message = subject+body1+body2
-            server.sendmail(config.EMAIL_ADDRESS,config.EMAIL_ADDRESS,message)
+            server.sendmail(config.EMAIL_ADDRESS,receiver,message)
             server.quit()
             print("Email sent!")
-        except :
+            print("Email process took",time.time()-start,"seconds")
+        except:
             print("Email failed to send.")
 
     def run_scrape(self):
