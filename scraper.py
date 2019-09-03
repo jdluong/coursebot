@@ -6,7 +6,6 @@ import json
 import config
 
 class Scraper:
-
     def __init__(self, deptName, courseNum):
         self.deptName = deptName
         self.courseNum = courseNum
@@ -27,7 +26,9 @@ class Scraper:
 
     def get_coursesDict(self):
         """ 
-        get coursesDict member var
+        return coursesDict member var
+
+        rtype: dict
         """
         return self.coursesDict
         
@@ -51,10 +52,10 @@ class Scraper:
             #     print("HTTP Error:",httpError)
             #     time.sleep(2)
             except requests.exceptions.ConnectTimeout:
-                print("Took too long to connect to the server.")
+                print("Took too long to connect to the server. Retrying...")
                 time.sleep(2)
             except requests.exceptions.ReadTimeout:
-                print("Server took too long to send data.")
+                print("Server took too long to send data. Retrying...")
                 time.sleep(2)
             except requests.exceptions.ConnectionError as connError:
                 print("Connection Error:", connError)

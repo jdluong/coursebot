@@ -2,6 +2,9 @@ from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from bs4 import BeautifulSoup
 from scraper import Scraper
+from signupper import SignUpper
+from loginsetup import LoginSetup
+import getpass
 
 import requests 
 import smtplib
@@ -33,24 +36,16 @@ def checkStatus(deptName,courseNum,prioLec,waitTimeScrape):
 		if coursesDict['Lec'][prioLec] == 'OPEN':
 			print(deptName,courseNum,"is open! Sending email notification...")
 			OPEN = True
-			scraper.email_notif('luongjohnd@gmail.com')
+			scraper.email_notif("luongjohnd@gmail.com")
 			# email process takes like 2-2.5 seconds; necessary? 
 		else: # if it's not open yet, wait 2 sec, refresh, check again
 			print(deptName, courseNum, "is not open yet! trying again in", waitTimeScrape, "seconds...")
 			time.sleep(waitTimeScrape)
+	
+	return coursesDict
 
-def signingUp():
+def login():
 	""" should break this down into logging in and signing up """
-
-	lectureCodes = ['13570','13515']
-	# 160 --- 13570: open
-	# 60B --- 13515: open
-	# 180A --- 13580: full
-	disCodes = [['13573','13572'],['13518','13516']]
-	# 160 --- 13573: full; 13571: open; 13572: open
-	# 60B --- 13518: time conflict; 13516: open
-	# 180A --- 13582: full; 13583: open
-	classNames = ['BME 160','BME 60B']
 
 	username = 'jdluong'
 	pw = 'jawnlu2v33'
@@ -103,6 +98,21 @@ def signingUp():
 
 	# ONCE SUCCESSFULLY LOGGED IN...
 
+def enrollment(lectureCodes,disCodes,classNames):
+
+	lectureCodes = ['13570','13515']
+	# 160 --- 13570: open
+	# 60B --- 13515: open
+	# 180A --- 13580: full
+	disCodes = [['13573','13572'],['13518','13516']]
+	# 160 --- 13573: full; 13571: open; 13572: open
+	# 60B --- 13518: time conflict; 13516: open
+	# 180A --- 13582: full; 13583: open
+	classNames = ['BME 160','BME 60B']
+
+	username = 'jdluong'
+	pw = 'jawnlu2v33'
+
 	########################
 	### MULTIPLE CLASSES ###
 	########################
@@ -152,13 +162,13 @@ def signingUp():
 				time.sleep(1) # in case the next page takes a whiel to load
 				checkLecSoup = BeautifulSoup(driver.page_source,'html.parser')
 
-				if len(checkLecSoup.find_all(string=re.compile("You must successfully enroll in all co-classes"))) == 1: # if added before dis
+				if checkLecSoup.find_all(string=re.compile("You must successfully enroll in all co-classes")): # if added before dis
 					print("[x] LEC SUCCESS; signed up before discussion")
 					lecEnrolled[lectureInd] = True
-				elif len(checkLecSoup.find_all(string=re.compile("you have added"))) == 1: # if added after dis
+				elif checkLecSoup.find_all(string=re.compile("you have added")): # if added after dis
 					print("[x] LEC SUCCESS; signed up after discussion")
 					lecEnrolled[lectureInd] = True
-				elif len(checkLecSoup.find_all(string=re.compile("This course is full"))) == 1: # if unsuccessful
+				elif checkLecSoup.find_all(string=re.compile("This course is full")): # if unsuccessful
 					print("[ ] LEC IS FULL; will try again later")
 					pass
 			
@@ -260,13 +270,29 @@ def signingUp():
 	### END PROGRAM ###
 	###		    	###
 
-if __name__ == '__main__':
-	needToCheck = True
+if __name__ == "__main__":
+	needToCheck = False
+
+	lectureCodes = ['13570','13515']
+	# 160 --- 13570: open
+	# 60B --- 13515: open
+	# 180A --- 13580: full
+	disCodes = [['13573','13572'],['13518','13516']]
+	# 160 --- 13573: full; 13571: open; 13572: open
+	# 60B --- 13518: time conflict; 13516: open
+	# 180A --- 13582: full; 13583: open
+	classNames = ['BME 160','BME 60B']
+
+	# ask for login info and confirm it's valid
+	session = SignUpper(lectureCodes,disCodes,classNames)
+	valid_credentials = False
+	print("------------------------------------------------------------------")
+	while not valid_credentials:
+		valid_credentials = session.credentials_setup()
 
 	if needToCheck:
-		deptName = 'I&C SCI'
-		courseNum = '33'
-		prioLec = '35500'
+		deptName, courseNum = "I&C SCI", "33"
+		prioLec = "35500"
 		waitTimeScrape = 10 # in seconds
 		# NEED TO REDUCE AMOUNT OF PARAMETERS for checkStatus
 		# Could initialize Scraper obj here, and have checkStatus parameters
@@ -276,3 +302,6 @@ if __name__ == '__main__':
 		# SO FOR NOW, we'll have 4 parameters...
 		checkStatus(deptName,courseNum,prioLec,waitTimeScrape)
 	
+	session = SignUpper(lectureCodes,disCodes,classNames)
+	# session.login()
+

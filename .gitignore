@@ -2,3 +2,5 @@ __pycache__/
 classFullExample.html
 classFullTest.py
 requestsTest.py
+schedule_example.py
+subclassTest.py
