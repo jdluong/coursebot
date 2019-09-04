@@ -3,6 +3,8 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 
+from tools import find_n_click_name, find_n_click_xpath
+
 import getpass
 import re
 
@@ -15,6 +17,14 @@ class LoginSetup:
         self._pw = ''
         self.loginDriver = None
         self.success = False
+
+    def credentials_setup(self):
+        """
+        driver method to set up ucinetid and pw, and test it
+        """
+        self.set_ucinetid()
+        self.set_pw()
+        return self.test()
     
     def set_ucinetid(self):
         """
@@ -30,7 +40,7 @@ class LoginSetup:
     # if not self._pw:
         same = False
         while not same:
-            tempPW = getpass.getpass("Enter your UCInetID password: ")
+            tempPW = getpass.getpass("Enter your password: ")
             pwCheck = getpass.getpass("Confirm your password: ")
             if tempPW == pwCheck:
                 same = True
@@ -46,34 +56,25 @@ class LoginSetup:
         """
         if not self.loginDriver:
             print("Testing credentials....")
-            self.init_browser()
+            self.init_browser(False)
         else:
             print("Re-testing credentials...")
-
-        ucinetid = self.loginDriver.find_element_by_name(elements.UCINETID)
-        ucinetid.send_keys(self.username)
-        password = self.loginDriver.find_element_by_name(elements.PASSWORD)
-        password.send_keys(self._pw)
-        password.send_keys('\ue007')
+        self.login_webauth(self.loginDriver)
+        # ----TIMEOUT---- add timeout line (check for elements?)
         checkLoginSoup = BeautifulSoup(self.loginDriver.page_source,'html.parser')
 
-        # if checkLoginSoup.find_all(string=re.compile("Invalid UCInetID or password")):
-        #     self.success = False
-        #     print("Your UCInetID and password failed to login. Please re-enter your credentials")
-        #     return self.success
-        print(checkLoginSoup.find("div",id="error-message").string)
-        if checkLoginSoup.find(id="error-message"):
-            # still in login site
-            print("Still in login site, can't log in. Err Msg:", checkLoginSoup.find(id="error-message").string[0])
-        else:
-            self.success = True
-            logout_button = self.loginDriver.find_element_by_xpath(elements.LOGOUT_BUTTON)
-            logout_button.click()
-            print("Your UCInetID and password successfully logged in!")
-            print("------------------------------------------------------------------")
-            self.loginDriver.quit()
-            self.loginDriver = None
-            return self.success
+        return self.login_status(checkLoginSoup)
+    
+#------------------------- tools in this class ---------------------------
+
+    def clean_driver(self):
+        """
+        closes loginDriver window and reinitializes it as None
+
+        type driver: webdriver
+        """
+        self.loginDriver.quit()
+        self.loginDriver = None
 
     def init_browser(self,headless=True):
         """
@@ -88,22 +89,70 @@ class LoginSetup:
                     options = webdriver.ChromeOptions()
                     options.headless = True
                     self.loginDriver = webdriver.Chrome(chrome_options=options)
-                
+                else:
+                    self.loginDriver = webdriver.Chrome()
+                # ----TIMEOUT---- replace line below with timeout
                 self.loginDriver.get("https://www.reg.uci.edu/registrar/soc/webreg.html")
-                access_webreg = self.loginDriver.find_element_by_xpath(elements.ACCESS_WEBREG_registrar)
-                access_webreg.click()
+                find_n_click_xpath(self.loginDriver,elements.ACCESS_WEBREG_registrar)
                 init = True
             except:
                 print("Something went wrong when using the browser. Retrying...")
-                self.loginDriver.quit()
-                self.loginDriver = None
+                self.clean_driver()
 
+    def login_status(self,checkLoginSoup):
+        """
+        uses checkLoginSoup to find what state the login is in and returns success or fail
 
+        type checkLoginSoup: BeautifulSoup
+
+        rtype: boolean
+        """
+        if checkLoginSoup.find_all(string=re.compile("Invalid UCInetID or password")):
+        # catches if wrong credentials
+            self.success = False
+            print("Your UCInetID and password are incorrect. Please re-enter your credentials")
+            return self.success
+        elif checkLoginSoup.find(id="error-message"): 
+        # catches general error messages (hopefully)
+            self.success = False
+            errMsg = self.build_err_msg(checkLoginSoup)
+            print('Unable to log in. "{msg}"'.format(msg=errMsg))
+            # ... then what?
+            return self.success
+        else:
+            self.success = True
+            print("Your credentials successfully logged in!")
+            print("Logging out safely...")
+            find_n_click_xpath(self.loginDriver, elements.LOGOUT_BUTTON)
+            print("------------------------------------------------------------------")
+            self.clean_driver()
+            return self.success
+
+    def build_err_msg(self,soup):
+        """
+        builds error message from webauth login site
+        need this because have to iterate, and it's too long/ugly to put in main method
+
+        type soup: BeautifulSoup
+
+        rtype: string
+        """
+        message = ''
+        for line in soup.find(id="error-message").stripped_strings:
+            message += line+" "
+        return message.strip()
+
+#----------------------- more general tools ------------------------
+
+    def login_webauth(self,driver):
+        """
+        takes in driver and logs in, assuming it's in webauth site
+
+        type driver: webdriver
+        """
+        ucinetid = driver.find_element_by_name(elements.UCINETID)
+        ucinetid.send_keys(self.username)
+        password = driver.find_element_by_name(elements.PASSWORD)
+        password.send_keys(self._pw)
+        password.send_keys('\ue007')
     
-    def credentials_setup(self):
-        """
-        driver method to set up ucinetid and pw
-        """
-        self.set_ucinetid()
-        self.set_pw()
-        return self.test()
