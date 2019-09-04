@@ -135,7 +135,7 @@ class LoginSetup:
 
         type soup: BeautifulSoup
 
-        rtype: string
+        rtype: string 
         """
         message = ''
         for line in soup.find(id="error-message").stripped_strings:
