@@ -1,13 +1,14 @@
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import NoSuchElementException # for retry login
 from bs4 import BeautifulSoup
+
 from scraper import Scraper
 from loginsetup import LoginSetup
-import getpass
-
+from tools import find_n_click_name, find_n_click_xpath
 import elements
 
-from selenium.common.exceptions import NoSuchElementException # for retry login
+import getpass
 import re # regex
 import time # for testing
 
@@ -20,67 +21,47 @@ class SignUpper(LoginSetup):
         self.disCodes = disCodes
         self.loginTimer = 60
         
-        self.driver = None
-        
         self.lecEnrolled = [False] * len(self.lectureCodes)
         self.disEnrolled = [False] * len(self.lectureCodes)
 
-
     def login(self):
         if not self.driver:
-            self.driver = webdriver.Chrome()
-
-        self.driver.get("https://www.reg.uci.edu/registrar/soc/webreg.html")
-        access_webreg = self.driver.find_element_by_xpath(elements.ACCESS_WEBREG_registrar)
-        access_webreg.click()
-
+            self.init_browser(False)
         loggedIn = False
         while not loggedIn:
             try:
-                # enter ucinetid and pw 
-                ucinetid = self.driver.find_element_by_name(elements.UCINETID)
-                ucinetid.send_keys(self.username)
-                password = self.driver.find_element_by_name(elements.PASSWORD)
-                password.send_keys(self._pw)
-                password.send_keys('\ue007')
+                self.login_webauth(self.driver)
                 checkLoginSoup = BeautifulSoup(self.driver.page_source,'html.parser')
-
                 # for testing
-                # logout_button = self.driver.find_element_by_xpath(elements.LOGOUT_BUTTON)
-                # logout_button.click()
-
+                # find_n_click_xpath(self.driver, elements.LOGOUT_BUTTON)
                 # checkLoginSoup = BeautifulSoup(self.driver.page_source,'html.parser')
-                # if enrollment_menu can't be found, then that means login wasn't successful
-                enrollment_menu = self.driver.find_element_by_xpath(elements.ENROLLMENT_MENU)
-                enrollment_menu.click()
-                loggedIn = True
-                print('\nSuccessfully logged in!')
 
+                # if enrollment_menu can't be found, then that means login wasn't successful
+                find_n_click_xpath(self.driver,elements.ENROLLMENT_MENU)
+                loggedIn = True
+                print('Successfully logged in!')
             except NoSuchElementException: # if login was unsuccessful...
-                if checkLoginSoup.find_all(string=re.compile("Invalid UCInetID or password")):
-                    # integrate re-enter username and password
-                    print("Incorrect username or password! Re-enter your credentials:")
-                    super().set_ucinetid()
-                    super().set_pw()
-                elif checkLoginSoup.find_all(div="error-message"):
-                    # still in login site
-                    print("Still in login site, can't log in. Err Msg:", checkLoginSoup.find_all(div="error-message")[0])
-                    print("Retrying in",self.loginTimer,"seconds...")
-                    time.sleep(self.loginTimer)
-                # elif checkLoginSoup.find_all(string=re.compile("UCInetID Secure Web Login")):
-                #     # still in login site
-                #     print("Still in login site, can't log in. Retrying in",self.loginTimer,"seconds...")
-                #     time.sleep(self.loginTimer)
-                else:
-                    # assuming we're in webreg... hopefully LOL
-                    print("In webreg, but can't log in. Retrying in",self.loginTimer,"seconds...")
-                    time.sleep(self.loginTimer)
-                    access_webreg = self.driver.find_element_by_xpath(elements.ACCESS_WEBREG_webreg)
-                    access_webreg.click()
+                self.login_status(checkLoginSoup,self.WebRegExtension,self.loginTimer)
             except:
                 print("Something went very wrong")
 
-    
+    def WebRegExtension(self,checkLoginSoup):
+        """
+        extends login_status to handle WebReg statuses
+
+        type checkLoginSoup: BeautifulSoup
+        """
+        if checkLoginSoup.find("div","WebRegErrorMsg"):
+            print('In WebReg, but can\'t log in. "{msg}"'.format(msg=checkLoginSoup.find("div","WebRegErrorMsg").string.strip()))
+            print("Retrying in",self.loginTimer,"seconds...\n--")
+            time.sleep(self.loginTimer)
+            find_n_click_xpath(self.driver,elements.ACCESS_WEBREG_webreg)
+        else: # some other error we can't catch with class='WebRegErrorMsg'
+            print("In webreg, but can't log in for some reason.")
+            print("Retrying in",self.loginTimer,"seconds...\n--")
+            time.sleep(self.loginTimer)
+            find_n_click_xpath(self.driver,elements.ACCESS_WEBREG_webreg)
+
     def enrollment(self):
         lecEnrolled = [False] * len(lectureCodes)
         disEnrolled = [False] * len(lectureCodes)

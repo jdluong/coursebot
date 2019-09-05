@@ -288,7 +288,7 @@ if __name__ == "__main__":
 	valid_credentials = False
 	print("------------------------------------------------------------------")
 	while not valid_credentials:
-		valid_credentials = session.credentials_setup()
+		valid_credentials = session.credentials_setup(isHeadless=True)
 
 	if needToCheck:
 		deptName, courseNum = "I&C SCI", "33"
@@ -301,7 +301,6 @@ if __name__ == "__main__":
 		#
 		# SO FOR NOW, we'll have 4 parameters...
 		checkStatus(deptName,courseNum,prioLec,waitTimeScrape)
-	
-	session = SignUpper(lectureCodes,disCodes,classNames)
-	# session.login()
+
+	session.login()
 

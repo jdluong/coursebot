@@ -4,27 +4,28 @@ from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 
 from tools import find_n_click_name, find_n_click_xpath
+import elements
 
 import getpass
 import re
-
-import elements
+import time
 
 class LoginSetup:
 
     def __init__(self):
         self.username = ''
         self._pw = ''
-        self.loginDriver = None
-        self.success = False
+        self.driver = None
 
-    def credentials_setup(self):
+    def credentials_setup(self,isHeadless):
         """
-        driver method to set up ucinetid and pw, and test it
+        driver method to set up ucinetid and pw, and test it; headless or not
+
+        type isHeadless: boolean
         """
         self.set_ucinetid()
         self.set_pw()
-        return self.test()
+        return self.test(isHeadless)
     
     def set_ucinetid(self):
         """
@@ -48,20 +49,22 @@ class LoginSetup:
             else:
                 print("Passwords didn't match! Please try again.")
 
-    def test(self):
+    def test(self,isHeadless):
         """
         tests username and pw for validity and returns success
 
+        type isHeadless: boolean
+
         rtype: boolean
         """
-        if not self.loginDriver:
+        if not self.driver:
             print("Testing credentials....")
-            self.init_browser(False)
+            self.init_browser(isHeadless)
         else:
             print("Re-testing credentials...")
-        self.login_webauth(self.loginDriver)
+        self.login_webauth(self.driver)
         # ----TIMEOUT---- add timeout line (check for elements?)
-        checkLoginSoup = BeautifulSoup(self.loginDriver.page_source,'html.parser')
+        checkLoginSoup = BeautifulSoup(self.driver.page_source,'html.parser')
 
         return self.login_status(checkLoginSoup)
     
@@ -69,78 +72,96 @@ class LoginSetup:
 
     def clean_driver(self):
         """
-        closes loginDriver window and reinitializes it as None
+        closes driver window and reinitializes it as None
 
         type driver: webdriver
         """
-        self.loginDriver.quit()
-        self.loginDriver = None
+        self.driver.quit()
+        self.driver = None
 
-    def init_browser(self,headless=True):
+    def init_browser(self,isHeadless):
         """
-        initializes (headless) browser for credentials testing; if headless = False, not headless
+        initializes (isHeadless) browser for credentials testing; if headless = False, not headless
 
-        type headless: boolean
+        type isHeadless: boolean
         """
         init = False
         while not init:
             try: 
-                if headless: # makes headless browser
+                if isHeadless: # makes headless browser
                     options = webdriver.ChromeOptions()
                     options.headless = True
-                    self.loginDriver = webdriver.Chrome(chrome_options=options)
+                    self.driver = webdriver.Chrome(chrome_options=options)
                 else:
-                    self.loginDriver = webdriver.Chrome()
+                    self.driver = webdriver.Chrome()
                 # ----TIMEOUT---- replace line below with timeout
-                self.loginDriver.get("https://www.reg.uci.edu/registrar/soc/webreg.html")
-                find_n_click_xpath(self.loginDriver,elements.ACCESS_WEBREG_registrar)
+                self.driver.get("https://www.reg.uci.edu/registrar/soc/webreg.html")
+                find_n_click_xpath(self.driver,elements.ACCESS_WEBREG_registrar)
                 init = True
             except:
                 print("Something went wrong when using the browser. Retrying...")
                 self.clean_driver()
 
-    def login_status(self,checkLoginSoup):
+    def login_status(self,checkLoginSoup,WebRegExtension=None,loginTimer=0):
         """
         uses checkLoginSoup to find what state the login is in and returns success or fail
+        can extend to check webreg with last argument
 
         type checkLoginSoup: BeautifulSoup
+        type WebRegExtend: boolean
+        type loginTimer: int
 
         rtype: boolean
         """
         if checkLoginSoup.find_all(string=re.compile("Invalid UCInetID or password")):
-        # catches if wrong credentials
-            self.success = False
             print("Your UCInetID and password are incorrect. Please re-enter your credentials")
-            return self.success
-        elif checkLoginSoup.find(id="error-message"): 
-        # catches general error messages (hopefully)
-            self.success = False
-            errMsg = self.build_err_msg(checkLoginSoup)
-            print('Unable to log in. "{msg}"'.format(msg=errMsg))
-            # ... then what?
-            return self.success
-        else:
-            self.success = True
-            print("Your credentials successfully logged in!")
-            print("Logging out safely...")
-            find_n_click_xpath(self.loginDriver, elements.LOGOUT_BUTTON)
-            print("------------------------------------------------------------------")
-            self.clean_driver()
-            return self.success
+            if WebRegExtension:
+                self.set_ucinetid()
+                self.set_pw()
+            return False
+        elif checkLoginSoup.find(id="status"): # too many logins, and maybe others?
+            print('Unable to log in. "{msg}"'.format(msg=self.build_err_msg(checkLoginSoup,"status")))
+            if WebRegExtension: self.WebRegWait(loginTimer)
+            return False
+        elif checkLoginSoup.find(id="error-message"): # general error messages (hopefully)
+            print('Unable to log in. "{msg}"'.format(msg=self.build_err_msg(checkLoginSoup,"error-message")))
+            if WebRegExtension: self.WebRegWait(loginTimer)
+            return False
+        elif checkLoginSoup.find_all(string=re.compile("UCInetID Secure Web Login")):
+            print('Unable to log in for some reason.')
+            if WebRegExtension: self.WebRegWait(loginTimer)
+        else: # means we're in webreg
+            if WebRegExtension:
+                WebRegExtension(checkLoginSoup)
+            else:
+                print("Your credentials successfully logged in!\nLogging out safely...")
+                try:
+                    find_n_click_xpath(self.driver, elements.LOGOUT_BUTTON)
+                except:
+                    pass
+                print("------------------------------------------------------------------")
+                self.clean_driver()
+                return True
 
-    def build_err_msg(self,soup):
+    def build_err_msg(self,soup,ID):
         """
         builds error message from webauth login site
         need this because have to iterate, and it's too long/ugly to put in main method
 
         type soup: BeautifulSoup
+        type ID: string
 
         rtype: string 
         """
         message = ''
-        for line in soup.find(id="error-message").stripped_strings:
+        for line in soup.find(id=ID).stripped_strings:
             message += line+" "
         return message.strip()
+
+    def WebRegWait(self,loginTimer):
+        print("Trying again in",loginTimer,"seconds...")
+        print("--")
+        time.sleep(loginTimer)
 
 #----------------------- more general tools ------------------------
 
