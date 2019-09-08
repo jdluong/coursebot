@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 
 from scraper import Scraper
 from loginsetup import LoginSetup
-from tools import find_n_click_name, find_n_click_xpath
+from tools import find_n_click_name, find_n_click_xpath, find_n_sendkeys
 import elements
 
 import getpass
@@ -53,72 +53,25 @@ class SignUpper(LoginSetup):
         """
         if checkLoginSoup.find("div","WebRegErrorMsg"):
             print('In WebReg, but can\'t log in. "{msg}"'.format(msg=checkLoginSoup.find("div","WebRegErrorMsg").string.strip()))
-            print("Retrying in",self.loginTimer,"seconds...\n--")
-            time.sleep(self.loginTimer)
+            self.WebRegWait(self.loginTimer)
             find_n_click_xpath(self.driver,elements.ACCESS_WEBREG_webreg)
         else: # some other error we can't catch with class='WebRegErrorMsg'
-            print("In webreg, but can't log in for some reason.")
-            print("Retrying in",self.loginTimer,"seconds...\n--")
-            time.sleep(self.loginTimer)
+            print("In WebReg, but can't log in for some reason.")
+            self.WebRegWait(self.loginTimer)
             find_n_click_xpath(self.driver,elements.ACCESS_WEBREG_webreg)
 
-    def enrollment(self):
-        lecEnrolled = [False] * len(lectureCodes)
-        disEnrolled = [False] * len(lectureCodes)
+    def enroll(self):
         tries = 0
-        # maybe a while loop saying while False in lecEnrolled or False in disEnrolled?
-        # but how would we get it to try to sign up for lec/dis that is False? 
-        # maybe it's not as clean to write another condition for a "retry", or going back
-        # so maybe we should have a condition of "if True: skip, if False, do it all again" in the for loop?
-        while False in lecEnrolled or False in disEnrolled:
-
-            # testing
-
-            tries += 1
+        while False in self.lecEnrolled or False in self.disEnrolled:
+            tries += 1 # for testing
             print("\n---------------------------------------------------------------------------\n")
             print("***************")
             print("*** TRY #",tries,"***")
             print("***************")
-
-            for lectureInd in range(len(lectureCodes)):
-
-                print('\n---------')
-                print(classNames[lectureInd],'|')
-                print('---------')
-
-                #######################
-                ##### ADD LECTURE #####
-                #######################
-
-                if lecEnrolled[lectureInd] == False: # if lecture not signed up yet
-                    # finds "add" radio button and clicks it
-                    add_radio = driver.find_element_by_xpath("//input[@type='radio'][@id='add']")
-                    add_radio.click()
-
-                    # finds the input box for the code, input the lecture code, and submits it
-                    courseCode_input = driver.find_element_by_name("courseCode")
-                    courseCode_input.send_keys(lectureCodes[lectureInd])
-
-                    # find the send request button and press it
-                    sendRequest_button = driver.find_element_by_xpath("//input[@type='submit'][@value='Send Request']")
-                    sendRequest_button.click()
-
-                    # check if lecture sign up was successful
-                    time.sleep(1) # in case the next page takes a whiel to load
-                    checkLecSoup = BeautifulSoup(driver.page_source,'html.parser')
-
-                    if checkLecSoup.find_all(string=re.compile("You must successfully enroll in all co-classes")): # if added before dis
-                        print("[x] LEC SUCCESS; signed up before discussion")
-                        lecEnrolled[lectureInd] = True
-                    elif checkLecSoup.find_all(string=re.compile("you have added")): # if added after dis
-                        print("[x] LEC SUCCESS; signed up after discussion")
-                        lecEnrolled[lectureInd] = True
-                    elif checkLecSoup.find_all(string=re.compile("This course is full")): # if unsuccessful
-                        print("[ ] LEC IS FULL; will try again later")
-                        pass
-                
-                print('--')
-
+            for lectureInd in range(len(self.lectureCodes)):
+                # ADDING LECTURE
+                if self.lecEnrolled[lectureInd] == False:
+                    self.enroll_lec(lectureInd)                
                 ####################
                 ##### ADD DIS ###### this is obnoxious because look below
                 ####################
@@ -210,6 +163,47 @@ class SignUpper(LoginSetup):
             # 	break
             # testing
         # driver.quit()
+
+    def enroll_lec(self,lectureInd):
+        """
+        enrolls in current lecture in loop
+
+        type lectureInd: int
+        """
+        self.add_lecture(self.lectureCodes[lectureInd])
+        checkLecSoup = BeautifulSoup(self.driver.page_source,'html.parser')
+        self.check_lec_status(checkLecSoup,lectureInd)
+        print('--')
+
+    def add_lecture(self,lectureCode):
+        """
+        in webreg, adds current lecture in loop 
+
+        type lectureCode: string
+        """
+        find_n_click_xpath(self.driver,elements.ADD_RADIO)
+        find_n_sendkeys(self.driver,elements.INPUT_COURSECODE,lectureCode)
+        find_n_click_xpath(self.driver,elements.SEND_REQUEST)
+
+    def check_lec_status(self,checkLecSoup,lectureInd):
+        """
+        checks the status of lecture after trying to add
+
+        type checkLecSoup: BeautifulSoup
+        type lectureInd: string
+        """
+        if checkLecSoup.find_all(string=re.compile("You must successfully enroll in all co-classes")): # if added before dis
+            print("[x]", self.classNames[lectureInd], "LEC SUCCESS; signed up before discussion")
+            self.lecEnrolled[lectureInd] = True
+        elif checkLecSoup.find_all(string=re.compile("you have added")): # if added after dis
+            print("[x]", self.classNames[lectureInd], "LEC SUCCESS; signed up after discussion")
+            self.lecEnrolled[lectureInd] = True
+        elif checkLecSoup.find_all(string=re.compile("This course is full")): # if unsuccessful
+            print("[ ] LEC IS FULL; will try again later")
+            pass
+        elif checkLecSoup.find("div","WebRegErrorMsg"):
+            print('[ ] UNABLE TO ENROLL: "{msg}"'.format(msg=checkLecSoup.find("div","WebRegErrorMsg").string.strip()))
+            pass
 
 #----------------------------------- FANCY USER INPUT STUFF WILL DO LATER ------------------------------
     

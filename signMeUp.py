@@ -302,5 +302,6 @@ if __name__ == "__main__":
 		# SO FOR NOW, we'll have 4 parameters...
 		checkStatus(deptName,courseNum,prioLec,waitTimeScrape)
 
-	session.login()
+	#session.login()
+	#session.enroll()
 

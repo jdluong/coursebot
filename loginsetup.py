@@ -3,7 +3,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 
-from tools import find_n_click_name, find_n_click_xpath
+from tools import find_n_click_name, find_n_click_xpath, find_n_sendkeys
 import elements
 
 import getpass
@@ -37,8 +37,7 @@ class LoginSetup:
         """
         sets password; doesn't ask for old password to validate a "reset"
         """
-    # MAKE THIS MORE SECURE SOMEHOW
-    # if not self._pw:
+        # MAKE THIS MORE SECURE SOMEHOW
         same = False
         while not same:
             tempPW = getpass.getpass("Enter your password: ")
@@ -65,7 +64,6 @@ class LoginSetup:
         self.login_webauth(self.driver)
         # ----TIMEOUT---- add timeout line (check for elements?)
         checkLoginSoup = BeautifulSoup(self.driver.page_source,'html.parser')
-
         return self.login_status(checkLoginSoup)
     
 #------------------------- tools in this class ---------------------------
@@ -119,7 +117,7 @@ class LoginSetup:
                 self.set_ucinetid()
                 self.set_pw()
             return False
-        elif checkLoginSoup.find(id="status"): # too many logins, and maybe others?
+        elif checkLoginSoup.find(id="status"): # too many failed logins, and maybe others?
             print('Unable to log in. "{msg}"'.format(msg=self.build_err_msg(checkLoginSoup,"status")))
             if WebRegExtension: self.WebRegWait(loginTimer)
             return False
@@ -159,8 +157,12 @@ class LoginSetup:
         return message.strip()
 
     def WebRegWait(self,loginTimer):
-        print("Trying again in",loginTimer,"seconds...")
-        print("--")
+        """
+        combines the print statement with the sleep statement
+        
+        type loginTimer: int
+        """
+        print("Trying again in",loginTimer,"seconds...\n--")
         time.sleep(loginTimer)
 
 #----------------------- more general tools ------------------------
@@ -171,9 +173,7 @@ class LoginSetup:
 
         type driver: webdriver
         """
-        ucinetid = driver.find_element_by_name(elements.UCINETID)
-        ucinetid.send_keys(self.username)
-        password = driver.find_element_by_name(elements.PASSWORD)
-        password.send_keys(self._pw)
-        password.send_keys('\ue007')
+        find_n_sendkeys(driver,elements.UCINETID,self.username)
+        find_n_sendkeys(driver,elements.PASSWORD,self._pw)
+        find_n_sendkeys(driver,elements.PASSWORD,'\ue007')
     
