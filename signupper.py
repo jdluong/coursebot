@@ -60,7 +60,7 @@ class SignUpper(LoginSetup):
             self.WebRegWait(self.loginTimer)
             find_n_click_xpath(self.driver,elements.ACCESS_WEBREG_webreg)
 
-    def enroll(self):
+    def enroll(self,coursesDict):
         tries = 0
         while False in self.lecEnrolled or False in self.disEnrolled:
             tries += 1 # for testing
@@ -69,81 +69,13 @@ class SignUpper(LoginSetup):
             print("*** TRY #",tries,"***")
             print("***************")
             for lectureInd in range(len(self.lectureCodes)):
-                # ADDING LECTURE
-                if self.lecEnrolled[lectureInd] == False:
-                    self.enroll_lec(lectureInd)                
-                ####################
-                ##### ADD DIS ###### this is obnoxious because look below
-                ####################
-                if disEnrolled[lectureInd] == False:
-                    for prio, disCode in enumerate(disCodes[lectureInd]): # for each discussion code, in order of priority as inputted...
-                        if needToCheck:
-                            # 1) do we need these following two if-statements if the point of this block
-                            # is to go through the priority list in order and sign up for whichever's
-                            # open first?
-                            # 2) the primary reason i can think of to keep these is to ensure their codes
-                            # are right? but would we even need the "OPEN" statement
-                            # 3) but to make the code more concise (and without if-statements), it would
-                            # make sense to forego these big if-statements for the needToCheck = False case,
-                            # because we wouldn't have a coursesDict
-                            if disCode in coursesDict['Dis']:
-                                if coursesDict['Dis'][disCode] == "OPEN": # if that discussion is open...
-                                    # find add radio button and click it
-                                    add_radio = driver.find_element_by_xpath("//input[@type='radio'][@id='add']")
-                                    add_radio.click()
-
-                                    # find course code input box and enter current discussion code
-                                    courseCode_input = driver.find_element_by_name("courseCode")
-                                    courseCode_input.send_keys(disCode)
-
-                                    # find send request button and click it
-                                    sendRequest_button = driver.find_element_by_xpath("//input[@type='submit'][@value='Send Request']")
-                                    sendRequest_button.click()
-
-                                    # have to check if it was successfully added
-                                    checkSoup = BeautifulSoup(driver.page_source,'html.parser')
-                                    addedCheck = checkSoup.find_all("h2")
-                                    if addedCheck[0].string.strip() == "you have added": # if successfully added AFTER lecture...
-                                        print('you got your priority #', prio+1, 'for lecture', lectureCodes[lectureInd])
-                                        disEnrolled[lectureInd] == True
-                                        break # stop trying to add future discussions
-                                else: # else, go to next discussion code 
-                                    pass
-                        else:
-                            # find add radio button and click it
-                            add_radio = driver.find_element_by_xpath("//input[@type='radio'][@id='add']")
-                            add_radio.click()
-
-                            # find course code input box and enter current discussion code
-                            courseCode_input = driver.find_element_by_name("courseCode")
-                            courseCode_input.send_keys(disCode)
-
-                            # find send request button and click it
-                            sendRequest_button = driver.find_element_by_xpath("//input[@type='submit'][@value='Send Request']")
-                            sendRequest_button.click()
-
-                            # have to check if it was successfully added
-                            # checkSoup = BeautifulSoup(driver.page_source,'html.parser')
-                            # addedCheck = checkSoup.find_all("h2")
-
-                            # checking if discussion sign up was successful
-                            # time.sleep(1)
-                            checkDisSoup = BeautifulSoup(driver.page_source,'html.parser')
-
-                            if len(checkDisSoup.find_all(string=re.compile("you have added"))) == 1: # if added after dis
-                                disEnrolled[lectureInd] = True
-                                print("[x] DIS",prio+1,"SUCCESS; signed up after lecture")
-                                # print('    - you got your priority #', prio+1, 'for', classNames[lectureInd])
-                                break
-                            elif len(checkDisSoup.find_all(string=re.compile("You must successfully enroll in all co-classes"))) == 1: # if added before dis
-                                disEnrolled[lectureInd] = True
-                                print("[x] DIS",prio+1,"SUCCESS; signed up before lecture")
-                                # print('    - you got your priority #', prio+1, 'for', classNames[lectureInd])
-                                break
-                            elif len(checkDisSoup.find_all(string=re.compile("This course is full"))) == 1: # if unsuccessful
-                                print("[ ] DIS",prio+1,"IS FULL; continue to try")
-                            else:
-                                print("[ ] DIS",prio+1,"ERROR")
+                if not self.lecEnrolled[lectureInd]:
+                    self.enroll_lec(lectureInd)               
+                if not self.disEnrolled[lectureInd]:
+                    # for each discussion code, in order of priority as inputted...
+                    for prio in range(len(self.disCodes[lectureInd])):
+                        added = self.enroll_dis(prio,lectureInd,coursesDict)
+                        if added: break
 
             # testing
             print('\n**************')
@@ -164,26 +96,26 @@ class SignUpper(LoginSetup):
             # testing
         # driver.quit()
 
+    def add_course(self,driver,courseCode):
+        """
+        in webreg, adds the course specified with the classCode
+
+        type lectureCode: string
+        """
+        find_n_click_xpath(driver,elements.ADD_RADIO)
+        find_n_sendkeys(driver,elements.INPUT_COURSECODE,courseCode)
+        find_n_click_xpath(driver,elements.SEND_REQUEST)
+
     def enroll_lec(self,lectureInd):
         """
         enrolls in current lecture in loop
 
         type lectureInd: int
         """
-        self.add_lecture(self.lectureCodes[lectureInd])
+        self.add_course(self.driver,self.lectureCodes[lectureInd])
         checkLecSoup = BeautifulSoup(self.driver.page_source,'html.parser')
         self.check_lec_status(checkLecSoup,lectureInd)
         print('--')
-
-    def add_lecture(self,lectureCode):
-        """
-        in webreg, adds current lecture in loop 
-
-        type lectureCode: string
-        """
-        find_n_click_xpath(self.driver,elements.ADD_RADIO)
-        find_n_sendkeys(self.driver,elements.INPUT_COURSECODE,lectureCode)
-        find_n_click_xpath(self.driver,elements.SEND_REQUEST)
 
     def check_lec_status(self,checkLecSoup,lectureInd):
         """
@@ -199,12 +131,51 @@ class SignUpper(LoginSetup):
             print("[x]", self.classNames[lectureInd], "LEC SUCCESS; signed up after discussion")
             self.lecEnrolled[lectureInd] = True
         elif checkLecSoup.find_all(string=re.compile("This course is full")): # if unsuccessful
-            print("[ ] LEC IS FULL; will try again later")
+            print("[ ]", self.classNames[lectureInd], "LEC IS FULL; will try again later")
             pass
         elif checkLecSoup.find("div","WebRegErrorMsg"):
-            print('[ ] UNABLE TO ENROLL: "{msg}"'.format(msg=checkLecSoup.find("div","WebRegErrorMsg").string.strip()))
+            print('[ ]', self.classNames[lectureInd], 'LEC UNABLE TO ENROLL: "{msg}"'.format(msg=checkLecSoup.find("div","WebRegErrorMsg").string.strip()))
             pass
 
+    def enroll_dis(self,prio,lectureInd,coursesDict):
+        """
+        enrolls in current lecture's discussion (singular); returns if that dis was added
+
+        type prio: int
+        type lectureInd: int
+        type needToCheck: bool
+
+        rtype: bool
+        """
+        disCode = self.disCodes[lectureInd][prio]
+        if coursesDict:
+            if disCode in coursesDict['Dis']:
+                if coursesDict['Dis'][disCode] == "OPEN": # if that discussion is open...
+                    self.add_course(self.driver,disCode)
+                    checkDisSoup = BeautifulSoup(self.driver.page_source,'html.parser')
+                    return self.check_dis_status(checkDisSoup,prio,lectureInd)
+                else: # else, go to next discussion code 
+                    return False
+        else:
+            self.add_course(self.driver,disCode)
+            checkDisSoup = BeautifulSoup(self.driver.page_source,'html.parser')
+            return self.check_dis_status(checkDisSoup,prio,lectureInd)
+
+    def check_dis_status(self,checkDisSoup,prio,lectureInd):
+        if checkDisSoup.find_all(string=re.compile("you have added")): # if added after dis
+            self.disEnrolled[lectureInd] = True
+            print("[x] {className} DIS SUCCESS (prio #{priority}); signed up after lecture".format(className=self.classNames[lectureInd],priority=prio+1))
+            return True
+        elif checkDisSoup.find_all(string=re.compile("You must successfully enroll in all co-classes")): # if added before dis
+            self.disEnrolled[lectureInd] = True
+            print("[x] {className} DIS SUCCESS (prio #{priority}); signed up before lecture".format(className=self.classNames[lectureInd],priority=prio+1))
+            return True
+        elif checkDisSoup.find_all(string=re.compile("This course is full")) == 1: # if unsuccessful
+            print("[ ] DIS",prio+1,"IS FULL; will continue down prio")
+            return False
+        elif checkDisSoup.find("div","WebRegErrorMsg"):
+            print('[ ]', self.classNames[lectureInd], 'DIS UNABLE TO ENROLL: "{msg}"'.format(msg=checkDisSoup.find("div","WebRegErrorMsg").string.strip()))
+            return False
 #----------------------------------- FANCY USER INPUT STUFF WILL DO LATER ------------------------------
     
     def courses_config(self):
