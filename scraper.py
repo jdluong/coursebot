@@ -99,8 +99,10 @@ class Scraper:
             server = smtplib.SMTP('smtp.gmail.com:587')
             server.ehlo()
             server.starttls()
+            print("Server config finished at:",time.time()-start,"seconds")
             # login to throwaway email
             server.login(config.EMAIL_ADDRESS,config.PASSWORD)
+            print("Login finished at:",time.time()-start,"seconds")
             # create and send email
             subject = "Subject: {subject}\n\n".format(subject=self.deptName+" "+self.courseNum+" has an opening!")
             body1 = self.deptName+" "+self.courseNum+" has just been updated. Here are the changes:\n\n"
@@ -108,11 +110,12 @@ class Scraper:
             # message = 'Subject: {}\n\n{}'.format('email test',body)
             message = subject+body1+body2
             server.sendmail(config.EMAIL_ADDRESS,receiver,message)
+            print("Email sent at at:",time.time()-start,"seconds")
             server.quit()
             print("Email sent!")
-            print("Email process took",time.time()-start,"seconds")
-        except:
-            print("Email failed to send.")
+            print("Whole email process took",time.time()-start,"seconds")
+        except smtplib.SMTPException as err:
+            print("Email failed to send:",str(err),"\nContinuing anyway...")
 
     def run_scrape(self):
         """

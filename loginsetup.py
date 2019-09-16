@@ -16,6 +16,9 @@ class LoginSetup:
         self.username = ''
         self._pw = ''
         self.driver = None
+        # change this FOR WINDOWS?
+        self.ERROR_PAGES_PATH = "error_pages/"
+        self.screenshotNum = 0
 
     def credentials_setup(self,isHeadless):
         """
@@ -103,7 +106,7 @@ class LoginSetup:
     def login_status(self,checkLoginSoup,WebRegExtension=None,loginTimer=0):
         """
         uses checkLoginSoup to find what state the login is in and returns success or fail
-        can extend to check webreg with last argument
+        can extend to check webreg status with last two arguments
 
         type checkLoginSoup: BeautifulSoup
         type WebRegExtend: boolean
@@ -129,6 +132,7 @@ class LoginSetup:
             print('Unable to log in for some reason.')
             if WebRegExtension: self.WebRegWait(loginTimer)
         else: # means we're in webreg
+            # SHOULD PROBABLY MAKE THIS ELSE STATEMENT INTO A SPECIFIC ELIF, JUST IN CASE
             if WebRegExtension:
                 WebRegExtension(checkLoginSoup)
             else:
@@ -177,3 +181,18 @@ class LoginSetup:
         find_n_sendkeys(driver,elements.PASSWORD,self._pw)
         find_n_sendkeys(driver,elements.PASSWORD,'\ue007')
     
+    def save_page(self,driver):
+        """
+        saves screenshot and html of web page in driver; used primarily for saving
+        error pages that we haven't accounted for 
+
+        type driver: WebDriver
+        """
+        try:
+            driver.save_screenshot(self.ERROR_PAGES_PATH+str(self.screenshotNum)+'.png')
+            with open(self.ERROR_PAGES_PATH+str(self.screenshotNum)+'.html', 'w') as f:
+                f.write(self.driver.page_source)
+            self.screenshotNum+=1
+        except:
+            print("Something went wrong with saving the page. Continuing anyway...")
+            pass
