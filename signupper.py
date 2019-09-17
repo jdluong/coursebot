@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 
 from scraper import Scraper
 from loginsetup import LoginSetup
-from tools import find_n_click_name, find_n_click_xpath, find_n_sendkeys
+from tools import find_n_click_name, find_n_click_xpath, find_n_sendkeys, email_notif
 import elements
 
 import getpass
@@ -14,32 +14,41 @@ import time # for testing
 
 class SignUpper(LoginSetup):
 
-    def __init__(self,lectureCodes,disCodes,classNames):
+    def __init__(self,lectureCodes,disCodes,classNames,loginTimer,headless):
         super().__init__()
         self.classNames = classNames
         self.lectureCodes = lectureCodes
         self.disCodes = disCodes
-        self.loginTimer = 60
+        self.loginTimer = loginTimer
         self.lecEnrolled = [False] * len(self.lectureCodes)
         self.disEnrolled = [False] * len(self.lectureCodes)
+        self.headless = headless
 
-    def login(self,headless):
+    def login(self):
         """
-        logging in while handling exceptions and checking status
+        logging in while handling exceptions and checking status; can choose headless browser
+        initial used to specify if this is the initial time logging in, or not (like when we
+        get kicked out of webreg)
+
+        type headless: bool
+        type initial: bool
         """
         if not self.driver:
-            self.init_browser(headless)
+            self.init_browser(self.headless,testing=False)
+
         loggedIn = False
         while not loggedIn:
             try:
                 self.login_webauth(self.driver)
-                checkLoginSoup = BeautifulSoup(self.driver.page_source,'html.parser')
+                checkLoginSoup = BeautifulSoup(self.driver.page_source,'html.parser') 
+                # ^^^ putting this in except, so don't think need here, but just in case
                 # find_n_click_xpath(self.driver, elements.LOGOUT_BUTTON)
                 # checkLoginSoup = BeautifulSoup(self.driver.page_source,'html.parser')
                 find_n_click_xpath(self.driver,elements.ENROLLMENT_MENU) # exception here if can't log in
                 loggedIn = True
                 print('Successfully logged into WebReg!')
             except NoSuchElementException: # if login was unsuccessful...
+                checkLoginSoup = BeautifulSoup(self.driver.page_source,'html.parser')
                 self.login_status(checkLoginSoup,self.WebRegExtension,self.loginTimer)
             except:
                 print("Something went very wrong during the login process.")
@@ -52,44 +61,49 @@ class SignUpper(LoginSetup):
         type coursesDict: dict
         """
         tries = 0
-        disTries = 0 # for testing
+        # disTries = 0 # for testing
         while False in self.lecEnrolled or False in self.disEnrolled:
             try:
-                tries += 1 # for testing
+                tries += 1
                 print("\n///\n*** ATTEMPT #{tryNum} ***\n///".format(tryNum=tries))
                 for lectureInd in range(len(self.lectureCodes)):
                     if not self.lecEnrolled[lectureInd]:
-                        self.enroll_lec(lectureInd) # tries enroll_lec, and returns success         
-                    if not self.disEnrolled[lectureInd]:
-                        # for each discussion code, in order of priority as inputted...
+                        self.enroll_lec(lectureInd)
+                    if not self.disEnrolled[lectureInd]: # dis code in order of priority as inputted...
                         for prio in range(len(self.disCodes[lectureInd])):
-                            disTries+=1
+                            # disTries+=1
                             # START TEST CODE
-                            if disTries == 2:
-                                find_n_click_xpath(self.driver, elements.LOGOUT_BUTTON)
+                            # if disTries == 2:
+                                # find_n_click_xpath(self.driver, elements.LOGOUT_BUTTON)
                             # END TEST CODE
                             added = self.enroll_dis(prio,lectureInd,coursesDict)
                             if added: break
                         print('------------')
-                self.print_courses_status(tries)
+                self.print_courses_status()
 
-                print("Logging out safely...")
-                find_n_click_xpath(self.driver, elements.LOGOUT_BUTTON)
-                print("------------------------------------------------------------------")
             except NoSuchElementException: # if ever get logged out for some reason...
                 # THIS IS ASSUMING WE'RE STILL IN WEBREG WHEN WE GET KICKED OFF!!
                 self.fix_logic() # fixes lecEnrolled and disEnrolled when we get kicked off
                 print("ERR: Logged out of WebReg, for some reason:")
                 checkSoup = BeautifulSoup(self.driver.page_source,'html.parser')
                 # self.save_page(self.driver)
-                self.WebRegExtension(checkSoup) # assuming we're in webreg; we can do self.login_status(checkSoup,self.WebRegExtension,self.loginTimer)
-                self.login(headless=True) # logs in , handles exception, AND gets us back to add/drop page
+                self.WebRegExtension(checkSoup,0) # assuming we're in webreg; we can do self.login_status(checkSoup,self.WebRegExtension,self.loginTimer)
+                self.login() # logs in, handles exception, AND gets us back to add/drop page
                 print("Resuming enrollment process...")
+
+        print("Logging out safely...")
+        # find_n_click_xpath(self.driver, elements.STUDY_LIST)
+        # self.driver.save_screenshot('study_list.png') # doesn't show the whole page :(
+        try:
+            find_n_click_xpath(self.driver, elements.LOGOUT_BUTTON)
+        except:
+            print("Couldn't log out safely, for some reason.")
+        print("------------------------------------------------------------------")
 
 
 # ---------------------- for webregextension in self.login() ----------------------
 
-    def WebRegExtension(self,checkLoginSoup):
+    def WebRegExtension(self,checkLoginSoup,loginTimer):
         """
         extends login_status to handle WebReg statuses
 
@@ -97,12 +111,12 @@ class SignUpper(LoginSetup):
         """
         if checkLoginSoup.find("div","WebRegErrorMsg"):
             print('In WebReg, but can\'t log in. "{msg}"'.format(msg=checkLoginSoup.find("div","WebRegErrorMsg").string.strip()))
-            self.WebRegWait(self.loginTimer)
+            self.WebRegWait(loginTimer)
             find_n_click_xpath(self.driver,elements.ACCESS_WEBREG_webreg)
         else: # some other error we can't catch with class='WebRegErrorMsg'
             print("In WebReg, but can't log in for some reason.")
             self.save_page(self.driver)
-            self.WebRegWait(self.loginTimer)
+            self.WebRegWait(loginTimer)
             find_n_click_xpath(self.driver,elements.ACCESS_WEBREG_webreg)
 
 # ---------------------- for lecture enrollment in self.enroll(coursesDict) ----------------------
@@ -154,7 +168,7 @@ class SignUpper(LoginSetup):
         """
         disCode = self.disCodes[lectureInd][prio]
         if coursesDict:
-            if disCode in coursesDict['Dis']:
+            if disCode in coursesDict['Dis']: # HAVE TO FIX, BECAUSE COULD BE LAB AND NOT DIS
                 if coursesDict['Dis'][disCode] == "OPEN": # if that discussion is open...
                     self.add_course(self.driver,disCode)
                     checkDisSoup = BeautifulSoup(self.driver.page_source,'html.parser')
@@ -209,7 +223,7 @@ class SignUpper(LoginSetup):
 
 # ---------------------- for printing status in self.enroll(coursesDict) ----------------------
 
-    def print_courses_status(self,tries):
+    def print_courses_status(self):
         """
         prints course status after each try
 
@@ -226,9 +240,30 @@ class SignUpper(LoginSetup):
                 if not self.disEnrolled[bothSec]:
                     print(' DIS',end='')
                 print(')')
+    
+    # ---------------------- sending email notification  ----------------------
+    
+    def email_notif_signupper(self,receiver):
+        """
+        sends email to a receiving email from the email in the config.py file
+
+        type receiver: string
+        """
+        # message = 'Subject: {}\n\n{}'.format('email test',body)
+        if False in self.lecEnrolled or False in self.disEnrolled:
+            subj = "Could not enroll in all classes"
+            body = "Could not enroll in: "
+            for bothSec in range(len(self.classNames)):
+                 if not (self.lecEnrolled[bothSec] and self.disEnrolled[bothSec]):
+                    body+=(self.classNames[bothSec]+" ")
+        else:
+            subj = "Sucessfully enrolled in all classes!"
+            body = "Successfully enrolled in all classes!"
+        subject = "Subject: {subject}\n\n".format(subject=subj)
+        email_notif(receiver,subject,body)
 
     # ---------------------- all-purpose method for adding courses  ----------------------
-
+        # maybe this belongs in tools? idk
     def add_course(self,driver,courseCode):
         """
         in webreg, adds the course specified with the classCode

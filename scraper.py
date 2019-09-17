@@ -5,6 +5,8 @@ import smtplib
 import json
 import config
 
+from tools import email_notif
+
 class Scraper:
     def __init__(self, deptName, courseNum):
         self.deptName = deptName
@@ -87,35 +89,17 @@ class Scraper:
         
         return self.get_coursesDict()
 
-    def email_notif(self,receiver):
+    def email_notif_scrape(self,receiver):
         """
         sends email to a receiving email from the email in the config.py file
 
         type receiver: string
         """
-        try:
-            start = time.time()
-            # setting up server
-            server = smtplib.SMTP('smtp.gmail.com:587')
-            server.ehlo()
-            server.starttls()
-            print("Server config finished at:",time.time()-start,"seconds")
-            # login to throwaway email
-            server.login(config.EMAIL_ADDRESS,config.PASSWORD)
-            print("Login finished at:",time.time()-start,"seconds")
-            # create and send email
-            subject = "Subject: {subject}\n\n".format(subject=self.deptName+" "+self.courseNum+" has an opening!")
-            body1 = self.deptName+" "+self.courseNum+" has just been updated. Here are the changes:\n\n"
-            body2 = json.dumps(self.coursesDict, indent=2)
-            # message = 'Subject: {}\n\n{}'.format('email test',body)
-            message = subject+body1+body2
-            server.sendmail(config.EMAIL_ADDRESS,receiver,message)
-            print("Email sent at at:",time.time()-start,"seconds")
-            server.quit()
-            print("Email sent!")
-            print("Whole email process took",time.time()-start,"seconds")
-        except smtplib.SMTPException as err:
-            print("Email failed to send:",str(err),"\nContinuing anyway...")
+        # message = 'Subject: {}\n\n{}'.format('email test',body)
+        subject = "Subject: {subject}\n\n".format(subject=self.deptName+" "+self.courseNum+" has an opening!")
+        body = self.deptName+" "+self.courseNum+" has just been updated. Here are the changes:\n\n"
+        body += json.dumps(self.coursesDict, indent=2)
+        email_notif(receiver,subject,body)
 
     def run_scrape(self):
         """
