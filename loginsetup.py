@@ -33,7 +33,7 @@ class LoginSetup:
         """
         sets ucinetid; doesn't require revalidation
         """
-        self.username = input("Enter your UCInetID: ")
+        self.username = input("Enter your UCInetID: ").strip()
     
     def set_pw(self):
         """
@@ -118,19 +118,19 @@ class LoginSetup:
                 self.set_ucinetid()
                 self.set_pw()
             return False
-        elif checkLoginSoup.find(id="status"): # too many failed logins, and maybe others?
-            print('Unable to log in. "{msg}"'.format(msg=self.build_err_msg(checkLoginSoup,"status")))
-            if WebRegExtension: self.WebRegWait(loginTimer)
-            return False
+        # elif checkLoginSoup.find(id="status"): # too many failed logins, and maybe others?
+        #     print('Unable to log in. "{msg}"'.format(msg=self.build_err_msg(checkLoginSoup,"status")))
+        #     if WebRegExtension: self.WebRegWait(loginTimer)
+        #     return False
         elif checkLoginSoup.find(id="error-message"): # general error messages (hopefully)
             print('Unable to log in. "{msg}"'.format(msg=self.build_err_msg(checkLoginSoup,"error-message")))
             if WebRegExtension: self.WebRegWait(loginTimer)
             return False
-        elif checkLoginSoup.find_all(string=re.compile("UCInetID Secure Web Login")):
-            print('Unable to log in for some reason.')
-            self.save_page(self.driver)
-            if WebRegExtension: self.WebRegWait(loginTimer)
-            return False
+        # elif checkLoginSoup.find_all(string=re.compile("UCInetID Secure Web Login")):
+        #     print('Unable to log in for some reason.')
+        #     self.save_page(self.driver)
+        #     if WebRegExtension: self.WebRegWait(loginTimer)
+        #     return False
         else: # means we're in webreg
             # SHOULD PROBABLY MAKE THIS ELSE STATEMENT INTO A SPECIFIC ELIF, JUST IN CASE
             if WebRegExtension:

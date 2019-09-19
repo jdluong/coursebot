@@ -8,6 +8,7 @@ ACCESS_WEBREG_registrar = "//a[@href='https://www.reg.uci.edu/cgi-bin/webreg-red
 TEST_LOGIN = "//a[@href='https://login.uci.edu/ucinetid/webauth']"
 # logout (by xpath); logout of test login in student access
 TEST_LOGOUT = "//a[@href='../logout/']"
+
 #--------------|
 # WEBAUTH LOGIN|
 #--------------|
@@ -33,6 +34,5 @@ ADD_RADIO = "//input[@type='radio'][@id='add']"
 INPUT_COURSECODE = "courseCode"
 # send request button (by xpath)
 SEND_REQUEST = "//input[@type='submit'][@value='Send Request']"
-
 # logout button (by xpath, in webreg)
 LOGOUT_BUTTON = "//input[@value='Logout'][@type='submit']"
