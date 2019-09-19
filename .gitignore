@@ -9,3 +9,4 @@ webregerror.py
 .DS_Store
 error_pages/
 handlerTest.py
+ec2test
