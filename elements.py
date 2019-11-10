@@ -13,10 +13,10 @@ TEST_LOGOUT = "//a[@href='../logout/']"
 # WEBAUTH LOGIN|
 #--------------|
 
-# ucinetid field (by name)
-UCINETID = "ucinetid"
-# password field (by name)
-PASSWORD = "password"
+# ucinetid field (by xpath)
+UCINETID = "//input[@id='ucinetid']"
+# password field (by xpath)
+PASSWORD = "//input[@id='password']"
 
 #--------|
 # WEBREG |

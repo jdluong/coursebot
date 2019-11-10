@@ -1,5 +1,6 @@
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
+import elements
 
 import smtplib
 import time
@@ -33,7 +34,10 @@ def find_n_sendkeys(driver,element_name,keys):
     type element_name: string
     type keys: string
     """
-    element = driver.find_element_by_name(element_name)
+    if element_name in {elements.UCINETID, elements.PASSWORD}:
+        element = driver.find_element_by_xpath(element_name)
+    else:
+        element = driver.find_element_by_name(element_name)
     element.send_keys(keys)
 
 def email_notif(receiver,subject,body):
@@ -45,21 +49,20 @@ def email_notif(receiver,subject,body):
     type body: string
     """
     try:
-        start = time.time()
+        # start = time.time()
         # setting up server
         server = smtplib.SMTP('smtp.gmail.com:587')
         server.ehlo()
         server.starttls()
-        print("Server config finished at:",time.time()-start,"seconds")
+        # print("Server config finished at:",time.time()-start,"seconds")
         # login to throwaway email
         server.login(config.EMAIL_ADDRESS,config.PASSWORD)
-        print("Login finished at:",time.time()-start,"seconds")
+        # print("Login finished at:",time.time()-start,"seconds")
         # create and send email
         message = subject+body
         server.sendmail(config.EMAIL_ADDRESS,receiver,message)
-        print("Email sent at at:",time.time()-start,"seconds")
+        # print("Email sent at at:",time.time()-start,"seconds")
         server.quit()
         print("Email sent!")
-        print("Whole email process took",time.time()-start,"seconds")
     except smtplib.SMTPException as err:
         print("Email failed to send:",str(err),"\nContinuing anyway...")

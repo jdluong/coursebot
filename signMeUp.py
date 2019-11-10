@@ -58,74 +58,91 @@ def getCourses():
 	
 	return classNames,lectureCodes,disCodes
 
-		
-def checkStatus(deptName,courseNum,prioLec,waitTimeScrape):
+def print_scrape_progress(tries):
+	if tries%100==0: 
+		currTime = time.localtime()
+		currTime_str = time.strftime("%H:%M",currTime)
+		print("Still working.. [{currTime}]".format(currTime=currTime_str))		
+
+def checkStatus(scraperObj,prioLec,waitTimeScrape,secPreference=False):
 	"""
 	Creates scraper class to scrape for course statuses and sends email notif if it's open
-
-	type deptName, courseNum, prioLec: string
 	
-	NEED TO REDUCE NUMBER OF PARAMETERS
-	need deptName and courseNum
 	need prioLec to stop scrape
-	need waitTimeScrape to specify how long to wait per scrape
-
-	could make it checkStatus(scraperObj,prioLec,waitTimeScrape) instead
-	"""
-	scraper = Scraper(deptName,courseNum)
-	OPEN = False 
-	while not OPEN:
-		coursesDict = scraper.run_scrape()
-		if coursesDict['Lec'][prioLec] == 'OPEN':
-			print(deptName,courseNum,"is open! Sending email notification...")
-			OPEN = True
-			scraper.email_notif_scrape("luongjohnd@gmail.com")
-		else: # if it's not open yet, wait waitTimeScrape sec, refresh, check again
-			# print(deptName, courseNum, "is not open yet! trying again in", waitTimeScrape, "seconds...")
-			time.sleep(waitTimeScrape)
-			# print("--")
-		# print("------------------------------------------------------------------")
 	
-	return coursesDict
+	"""
+	OPEN, tries = False, 0
+	while not OPEN:
+		tries += 1
+		coursesDict = scraperObj.run_scrape() 
+		if coursesDict['Lec'][prioLec] == 'OPEN':
+			if secPreference:
+				pass
+			else:
+				sectionCodes = scraperObj.build_secCode(coursesDict)
+				if sectionCodes:
+					print(deptName,courseNum,"is open! Sending email notification...")
+					OPEN = True
+					scraperObj.email_notif_scrape("luongjohnd@gmail.com")
+					return [sectionCodes]
+				else:
+					print_scrape_progress(tries)
+					time.sleep(waitTimeScrape)
+		else: # if it's not open yet, wait waitTimeScrape sec, refresh, check again
+			print_scrape_progress(tries)
+			time.sleep(waitTimeScrape)
 
-def enrollment(SignUpperObj,coursesDict,receiver):
+def enrollment(SignUpperObj,needToCheck):
 	SignUpperObj.login()
 	print("Beginning enrollment process...")
-	return SignUpperObj.enroll(coursesDict)
+	return SignUpperObj.enroll(needToCheck)
 
 # def driver()
 
 if __name__ == "__main__":
 	needToCheck = True # scrape or not
 	someoneElse = False
-	if someoneElse:
-		classNames, lectureCodes, disCodes = getCourses()
-	else:
-		classNames = ['I&CS 33']
-		lectureCodes = ['35500']
-		disCodes = [['35508','35505','35507','35503','35501','35502','35504''35506']]
-	loginTimer = 10
-	timesToTry = 15
+	classNames = ['I&CS 33']
+	lectureCodes = ['35500']
+	sectionCodes = [['35508','35505','35507','35503','35501','35502','35504''35506']]
 
-	# init obj
-	session = SignUpper(lectureCodes,disCodes,classNames,loginTimer,headless=False,timesToTry=timestoTry)
-	# ask for login info and confirm it's valid
+	if needToCheck: # CURRENTLY ONLY SUPPORTS ONE CLASS
+		loginTimer = 0
+		timesToTry = 15
+		session = SignUpper(lectureCodes,sectionCodes,classNames,loginTimer,headless=True,timesToTry=timesToTry)
+		valid_credentials = False
+		print("------------------------------------------------------------------")
+		while not valid_credentials:
+			valid_credentials = session.credentials_setup(isHeadless=True)
+
+		deptName, courseNum = "I&C SCI", "33"
+		prioLec = "35500"
+		section = "Lab"
+		waitTimeScrape = 6 # in seconds
+		currTime = time.localtime()
+		currTime_str = time.strftime("%m/%d, %H:%M",currTime)
+		print("Checking status for {dept} {num}... [{currTime}]".format(dept=deptName,num=courseNum,currTime=currTime_str))
+		enrolled = False
+		secPreference = False
+		scraper = Scraper(deptName,courseNum,section) 
+		while not enrolled:
+			sectionCodes = checkStatus(scraper,prioLec,waitTimeScrape,secPreference)
+			session.set_sectionCodes(sectionCodes)
+			enrolled = enrollment(session,needToCheck)
+			if enrolled:
+				session.email_notif_signupper("luongjohnd@gmail.com")
+			scraper.reset_scrape()
+
+	else:
+		if someoneElse:
+			classNames, lectureCodes, disCodes = getCourses()
+		loginTimer = 10
+
+	session = SignUpper(lectureCodes,sectionCodes,classNames,loginTimer,headless=False)
 	valid_credentials = False
 	print("------------------------------------------------------------------")
 	while not valid_credentials:
 		valid_credentials = session.credentials_setup(isHeadless=False)
-	# scrape, if configured
-	if needToCheck:
-		deptName, courseNum = "I&C SCI", "33"
-		prioLec = "35500"
-		waitTimeScrape = 10 # in seconds
-		print("Checking status for {dept} {num}...".format(dept=deptName,num=courseNum))
-		enrolled =  False
-		while not enrolled:
-			coursesDict = checkStatus(deptName,courseNum,prioLec,waitTimeScrape)
-			enrolled = enrollment(session,coursesDict,needToCheck)
-			session.email_notif_signupper("luongjohnd@gmail.com")
-	else: 
-		coursesDict = None
-	# start enrollment process
-	enrollment(session,coursesDict,"luongjohnd@gmail.com")
+	
+	enrollment(session,needToCheck)
+	session.email_notif_signupper("luongjohnd@gmail.com")

@@ -8,7 +8,7 @@ import config
 from tools import email_notif
 
 class Scraper:
-    def __init__(self, deptName, courseNum):
+    def __init__(self, deptName, courseNum, section):
         self.deptName = deptName
         self.courseNum = courseNum
         self.BASE_URL = "https://www.reg.uci.edu/perl/WebSoc"
@@ -25,6 +25,7 @@ class Scraper:
                         'FontSize':'100',
                         'CancelledCourses':'Exclude'}
         self.coursesDict = {}
+        self.section = section
 
     def get_coursesDict(self):
         """ 
@@ -33,6 +34,12 @@ class Scraper:
         rtype: dict
         """
         return self.coursesDict
+    
+    def reset_scrape(self):
+        """
+        initializes coursesDict back to empty dict
+        """
+        self.coursesDict = {}
         
     def soupify(self,url,params):
         """
@@ -63,7 +70,6 @@ class Scraper:
                 print("Connection Error:", connError)
                 time.sleep(2)
 
-
     def parse_soup(self,soup):
         """
         parses soup to populate self.coursesDict with course info
@@ -88,6 +94,23 @@ class Scraper:
                 self.coursesDict[tempArray[1]][tempArray[0]] = tempArray[-1]
         
         return self.get_coursesDict()
+
+    def build_secCode(self,coursesDict):
+        """
+        method to build sectionCodes; refactor to queue approach
+
+        coursesDict: dict
+        """
+        sectionCodes = []
+        if 'OPEN' in coursesDict[self.section].values():
+            for code in coursesDict[self.section]:
+                if coursesDict[self.section][code] == 'OPEN':
+                    sectionCodes.insert(0,code)
+                else:
+                    sectionCodes.append(code)
+
+        return sectionCodes
+
 
     def email_notif_scrape(self,receiver):
         """

@@ -14,24 +14,24 @@ import time # for testing
 
 class SignUpper(LoginSetup):
 
-    def __init__(self,lectureCodes,disCodes,classNames,loginTimer,headless,timesToTry):
+    def __init__(self,lectureCodes,disCodes,classNames,loginTimer,headless,timesToTry=None):
         super().__init__()
         self.classNames = classNames
         self.lectureCodes = lectureCodes
-        self.disCodes = disCodes
+        self.sectionCodes = disCodes
         self.loginTimer = loginTimer
         self.lecEnrolled = [False] * len(self.lectureCodes)
         self.disEnrolled = [False] * len(self.lectureCodes)
         self.headless = headless
         self.timesToTry = timesToTry
 
-    def set_disCodes(self,disCodes):
+    def set_sectionCodes(self,sectionCodes):
         """
         sets self.disCodes after checking or opening
 
         type disCodes: [string]
         """
-        self.disCodes = disCodes
+        self.sectionCodes = sectionCodes
 
     def login(self):
         """
@@ -59,11 +59,11 @@ class SignUpper(LoginSetup):
                 print("Something went very wrong during the login process.")
                 self.save_page(self.driver)
 
-    def enroll(self,coursesDict,needToCheck):
+    def enroll(self,needToCheck):
         """
         method for enrollment process logic for lecture and discussion, returns success/fail
 
-        type coursesDict: dict
+        type sectionCodes: [string]
 
         rtype: bool
         """
@@ -72,17 +72,18 @@ class SignUpper(LoginSetup):
             try:
                 if needToCheck:
                     if tries == self.timesToTry: break
-                    tries += 1
-                    print("\n///\n*** ATTEMPT #{tryNum} ***\n///".format(tryNum=tries))
-                    for lectureInd in range(len(self.lectureCodes)):
-                        if not self.lecEnrolled[lectureInd]:
-                            self.enroll_lec(lectureInd)
-                        if not self.disEnrolled[lectureInd]: # dis code in order of priority as inputted...
-                            for prio in range(len(self.disCodes[lectureInd])):
-                                added = self.enroll_dis(prio,lectureInd,coursesDict)
-                                if added: break
-                            print('------------')
+                tries += 1
+                print("\n///\n*** ATTEMPT #{tryNum} ***\n///".format(tryNum=tries))
+                for lectureInd in range(len(self.lectureCodes)):
+                    if not self.lecEnrolled[lectureInd]:
+                        self.enroll_lec(lectureInd)
+                    if not self.disEnrolled[lectureInd]: # dis code in order of priority as inputted...
+                        for prio in range(len(self.sectionCodes[lectureInd])):
+                            added = self.enroll_dis(prio,lectureInd)
+                            if added: break
+                        print('------------')
                 self.print_courses_status()
+
             except NoSuchElementException: # if ever get logged out for some reason... ASSUMING STILL IN WEBREG
                 self.fix_logic() # fixes lecEnrolled and disEnrolled when we get kicked off
                 print("ERR: Logged out of WebReg, for some reason:")
@@ -95,7 +96,7 @@ class SignUpper(LoginSetup):
         self.logout_webreg(self.driver)
         print("------------------------------------------------------------------")
         self.fix_logic()
-        return (False in self.lecEnrolled or False in self.disEnrolled)
+        return not (False in self.lecEnrolled or False in self.disEnrolled)
 
 
 # ---------------------- for webregextension in self.login() ----------------------
@@ -119,7 +120,7 @@ class SignUpper(LoginSetup):
             except:
                 self.driver.refresh()
 
-# ---------------------- for lecture enrollment in self.enroll(coursesDict) ----------------------
+# ---------------------- for lecture enrollment in self.enroll(needToCheck) ----------------------
 
     def enroll_lec(self,lectureInd):
         """
@@ -154,9 +155,9 @@ class SignUpper(LoginSetup):
             print('[ ]', self.classNames[lectureInd], 'LEC UNABLE TO ENROLL FOR SOME REASON')
             self.save_page(self.driver)
     
-    # ---------------------- for discussion enrollment in self.enroll(coursesDict) ----------------------
+    # ---------------------- for discussion enrollment in self.enroll(needToCheck) ----------------------
 
-    def enroll_dis(self,prio,lectureInd,coursesDict):
+    def enroll_dis(self,prio,lectureInd):
         """
         enrolls in current lecture's discussion (singular); returns if that dis was added
 
@@ -166,20 +167,9 @@ class SignUpper(LoginSetup):
 
         rtype: bool
         """
-        disCode = self.disCodes[lectureInd][prio]
-        if coursesDict:
-            if disCode in coursesDict['Dis']: # HAVE TO FIX, BECAUSE COULD BE LAB AND NOT DIS
-                if coursesDict['Dis'][disCode] == "OPEN": # if that discussion is open...
-                    self.add_course(self.driver,disCode)
-                    checkDisSoup = BeautifulSoup(self.driver.page_source,'html.parser')
-                    return self.check_dis_status(checkDisSoup,prio,lectureInd)
-                else: # else, go to next discussion code 
-                    print("[ ] {className} DIS #{priority} IS FULL; will continue down prio".format(className=self.classNames[lectureInd],priority=prio+1))
-                    return False
-        else:
-            self.add_course(self.driver,disCode)
-            checkDisSoup = BeautifulSoup(self.driver.page_source,'html.parser')
-            return self.check_dis_status(checkDisSoup,prio,lectureInd)
+        self.add_course(self.driver,self.sectionCodes[lectureInd][prio])
+        checkDisSoup = BeautifulSoup(self.driver.page_source,'html.parser')
+        return self.check_dis_status(checkDisSoup,prio,lectureInd)
 
     def check_dis_status(self,checkDisSoup,prio,lectureInd):
         """
@@ -221,7 +211,7 @@ class SignUpper(LoginSetup):
                 self.lecEnrolled[lecInd] = False
                 self.disEnrolled[lecInd] = False
 
-# ---------------------- for printing status in self.enroll(coursesDict) ----------------------
+# ---------------------- for printing status in self.enroll(needToCheck) ----------------------
 
     def print_courses_status(self):
         """
@@ -248,7 +238,7 @@ class SignUpper(LoginSetup):
         method to log out of webreg safely; (kind of) handles exceptions
 
         type driver: webdriver
-        """"
+        """
         try:
             find_n_click_xpath(self.driver, elements.LOGOUT_BUTTON)
         except:
