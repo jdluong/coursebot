@@ -102,9 +102,9 @@ def enrollment(SignUpperObj,needToCheck):
 if __name__ == "__main__":
 	needToCheck = True # scrape or not
 	someoneElse = False
-	classNames = ['I&CS 33']
-	lectureCodes = ['35500']
-	sectionCodes = [['35508','35505','35507','35503','35501','35502','35504''35506']]
+	classNames = ['ENGR190W(MW)']
+	lectureCodes = ['13306']
+	sectionCodes = [['13307']]
 
 	if needToCheck: # CURRENTLY ONLY SUPPORTS ONE CLASS
 		loginTimer = 0
@@ -115,9 +115,9 @@ if __name__ == "__main__":
 		while not valid_credentials:
 			valid_credentials = session.credentials_setup(isHeadless=True)
 
-		deptName, courseNum = "I&C SCI", "33"
-		prioLec = "35500"
-		section = "Lab"
+		deptName, courseNum = "ENGR", "190W"
+		prioLec = "13306"
+		section = "Dis"
 		waitTimeScrape = 6 # in seconds
 		currTime = time.localtime()
 		currTime_str = time.strftime("%m/%d, %H:%M",currTime)
@@ -127,6 +127,7 @@ if __name__ == "__main__":
 		scraper = Scraper(deptName,courseNum,section) 
 		while not enrolled:
 			sectionCodes = checkStatus(scraper,prioLec,waitTimeScrape,secPreference)
+			print(sectionCodes)
 			session.set_sectionCodes(sectionCodes)
 			enrolled = enrollment(session,needToCheck)
 			if enrolled:
@@ -138,11 +139,11 @@ if __name__ == "__main__":
 			classNames, lectureCodes, disCodes = getCourses()
 		loginTimer = 10
 
-	session = SignUpper(lectureCodes,sectionCodes,classNames,loginTimer,headless=False)
-	valid_credentials = False
-	print("------------------------------------------------------------------")
-	while not valid_credentials:
-		valid_credentials = session.credentials_setup(isHeadless=False)
-	
-	enrollment(session,needToCheck)
-	session.email_notif_signupper("luongjohnd@gmail.com")
+		session = SignUpper(lectureCodes,sectionCodes,classNames,loginTimer,headless=False)
+		valid_credentials = False
+		print("------------------------------------------------------------------")
+		while not valid_credentials:
+			valid_credentials = session.credentials_setup(isHeadless=False)
+		
+		enrollment(session,needToCheck)
+		session.email_notif_signupper("luongjohnd@gmail.com")

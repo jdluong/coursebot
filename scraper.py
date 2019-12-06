@@ -8,18 +8,19 @@ import config
 from tools import email_notif
 
 class Scraper:
-    def __init__(self, deptName, courseNum, section):
+    def __init__(self, deptName, courseNum, section, courseCodes=''):
         self.deptName = deptName
         self.courseNum = courseNum
         self.BASE_URL = "https://www.reg.uci.edu/perl/WebSoc"
         self.params = {'Submit':'Display Web',
-                        'YearTerm':'2019-92',
+                        'YearTerm':'2020-03',
                         'ShowComments':'on',
                         'ShowFinals':'on',
                         'Breadth':'ANY',
                         'Dept':self.deptName,
                         'CourseNum':self.courseNum,
                         'Division':'ANY',
+                        'CourseCodes':courseCodes,
                         'ClassType':'ALL',
                         'FullCourses':'ANY',
                         'FontSize':'100',
@@ -129,3 +130,8 @@ class Scraper:
         driver method to return coursesDict after scraping and parsing
         """
         return self.parse_soup(self.soupify(self.BASE_URL,self.params))
+
+if __name__  == '__main__':
+    test = Scraper('ENGR','190W','Dis')
+    print(test.run_scrape())
+    print(test.build_secCode(test.get_coursesDict()))
