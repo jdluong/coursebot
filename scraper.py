@@ -25,6 +25,7 @@ class Scraper:
                         'FullCourses':'ANY',
                         'FontSize':'100',
                         'CancelledCourses':'Exclude'}
+        self.headers = {"User-Agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36"}
         self.coursesDict = {}
         self.section = section
 
@@ -54,7 +55,7 @@ class Scraper:
         connected = False
         while not connected:
             try:
-                html_page = requests.post(url,data=params).text # download html of webpage
+                html_page = requests.post(url,data=params,headers=self.headers).text # download html of webpage
                 # html_page.raise_for_status() # for some reason method doesn't work?
                 connected = True
                 return BeautifulSoup(html_page,'html.parser')
@@ -132,6 +133,11 @@ class Scraper:
         return self.parse_soup(self.soupify(self.BASE_URL,self.params))
 
 if __name__  == '__main__':
-    test = Scraper('ENGR','190W','Dis')
+    test = Scraper('COMPSCI','122A','Dis')
+    # user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36"
+    # headers = {"User-Agent":user_agent}
+    # r = requests.post(test.BASE_URL,data=test.params,headers=headers)
+    # print(r.status_code)
+    # print(r.text)
     print(test.run_scrape())
-    print(test.build_secCode(test.get_coursesDict()))
+    # print(test.build_secCode(test.get_coursesDict()))
