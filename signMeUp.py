@@ -2,7 +2,7 @@ from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from bs4 import BeautifulSoup
 from scraper import Scraper
-from signupper import SignUpper
+from enroller import Enroller
 from loginsetup import LoginSetup
 import getpass
 
@@ -58,7 +58,7 @@ def getCourses():
 	
 	return classNames,lectureCodes,disCodes
 
-def print_scrape_progress(tries):
+def print_progress(tries):
 	if tries%100==0: 
 		currTime = time.localtime()
 		currTime_str = time.strftime("%H:%M",currTime)
@@ -83,21 +83,29 @@ def checkStatus(scraperObj,prioLec,waitTimeScrape,secPreference=False):
 				if sectionCodes:
 					print(deptName,courseNum,"is open! Sending email notification...")
 					OPEN = True
-					scraperObj.email_notif_scrape("luongjohnd@gmail.com")
+					scraperObj.email_notif("luongjohnd@gmail.com")
 					return [sectionCodes]
 				else:
-					print_scrape_progress(tries)
+					print_progress(tries)
 					time.sleep(waitTimeScrape)
 		else: # if it's not open yet, wait waitTimeScrape sec, refresh, check again
-			print_scrape_progress(tries)
+			print_progress(tries)
 			time.sleep(waitTimeScrape)
 
+def checkStatus_new(scraper, interval=6):
+	OPEN, tries = False, 0
+	while not OPEN:
+		tries += 1
+		if scraper.scrape_n_check():
+			scraper.email_notif("luongjohnd@gmail.com") # should change to variable later
+			return scraper.get_coursesDict()
+		print_progress(tries)
+		time.sleep(interval)
+	
 def enrollment(SignUpperObj,needToCheck):
 	SignUpperObj.login()
 	print("Beginning enrollment process...")
 	return SignUpperObj.enroll(needToCheck)
-
-# def driver()
 
 if __name__ == "__main__":
 	needToCheck = True # scrape or not
@@ -109,7 +117,7 @@ if __name__ == "__main__":
 	if needToCheck: # CURRENTLY ONLY SUPPORTS ONE CLASS
 		loginTimer = 0
 		timesToTry = 15
-		session = SignUpper(lectureCodes,sectionCodes,classNames,loginTimer,headless=True,timesToTry=timesToTry)
+		session = Enroller(lectureCodes,sectionCodes,classNames,loginTimer,headless=True,timesToTry=timesToTry)
 		valid_credentials = False
 		print("------------------------------------------------------------------")
 		while not valid_credentials:
@@ -131,19 +139,19 @@ if __name__ == "__main__":
 			session.set_sectionCodes(sectionCodes)
 			enrolled = enrollment(session,needToCheck)
 			if enrolled:
-				session.email_notif_signupper("luongjohnd@gmail.com")
-			scraper.reset_scrape()
+				session.email_notif_enroller("luongjohnd@gmail.com")
+			scraper.reset()
 
 	else:
 		if someoneElse:
 			classNames, lectureCodes, disCodes = getCourses()
 		loginTimer = 10
 
-		session = SignUpper(lectureCodes,sectionCodes,classNames,loginTimer,headless=False)
+		session = Enroller(lectureCodes,sectionCodes,classNames,loginTimer,headless=False)
 		valid_credentials = False
 		print("------------------------------------------------------------------")
 		while not valid_credentials:
 			valid_credentials = session.credentials_setup(isHeadless=False)
 		
 		enrollment(session,needToCheck)
-		session.email_notif_signupper("luongjohnd@gmail.com")
+		session.email_notif_enroller("luongjohnd@gmail.com")

@@ -4,6 +4,7 @@ import time
 import smtplib
 import json
 import config
+from collections import defaultdict
 
 from tools import email_notif
 
@@ -26,7 +27,7 @@ class Scraper:
                         'FontSize':'100',
                         'CancelledCourses':'Exclude'}
         self.headers = {"User-Agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36"}
-        self.coursesDict = {}
+        self.coursesDict = defaultdict(list)
         self.section = section
 
     def get_coursesDict(self):
@@ -37,11 +38,17 @@ class Scraper:
         """
         return self.coursesDict
     
-    def reset_scrape(self):
+    def get_className(self):
+        """
+        *** WINTER BREAK REFACTOR
+        """
+        return self.deptName+self.courseNum
+    
+    def reset(self):
         """
         initializes coursesDict back to empty dict
         """
-        self.coursesDict = {}
+        self.coursesDict.clear()
         
     def soupify(self,url,params):
         """
@@ -96,6 +103,29 @@ class Scraper:
                 self.coursesDict[tempArray[1]][tempArray[0]] = tempArray[-1]
         
         return self.get_coursesDict()
+    
+    def parse_soup_new(self,soup):
+        """
+        *** WINTER BREAK REFACTOR
+        """
+        rows = soup.find_all("tr",valign="top")
+        for row in rows:
+            data = [] # seems that there's no other way to do this
+            for children in row.children: # can do same with rows[0] (w/o .children)
+                data.append(children.string)
+
+            if data[-1] == 'OPEN':
+                self.coursesDict[data[1]].append(data[0])
+            else:
+                pass
+        
+        return self.coursesDict
+    
+    def is_open(self):
+        """
+        *** WINTER BREAK REFACTOR
+        """
+        return 'Lec' in self.coursesDict and self.section in self.coursesDict
 
     def build_secCode(self,coursesDict):
         """
@@ -114,7 +144,7 @@ class Scraper:
         return sectionCodes
 
 
-    def email_notif_scrape(self,receiver):
+    def email_notif(self,receiver):
         """
         sends email to a receiving email from the email in the config.py file
 
@@ -130,7 +160,14 @@ class Scraper:
         """
         driver method to return coursesDict after scraping and parsing
         """
-        return self.parse_soup(self.soupify(self.BASE_URL,self.params))
+        return self.parse_soup_new(self.soupify(self.BASE_URL,self.params))
+    
+    def scrape_n_check(self):
+        """
+        *** WINTER BREAK REFACTOR
+        """
+        self.run_scrape()
+        return self.is_open()
 
 if __name__  == '__main__':
     test = Scraper('COMPSCI','122A','Dis')
@@ -140,4 +177,5 @@ if __name__  == '__main__':
     # print(r.status_code)
     # print(r.text)
     print(test.run_scrape())
+    print(test.is_open())
     # print(test.build_secCode(test.get_coursesDict()))

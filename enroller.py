@@ -12,7 +12,7 @@ import getpass
 import re # regex
 import time # for testing
 
-class SignUpper(LoginSetup):
+class Enroller(LoginSetup):
 
     def __init__(self,lectureCodes,disCodes,classNames,loginTimer,headless,timesToTry=None):
         super().__init__()
@@ -246,7 +246,7 @@ class SignUpper(LoginSetup):
 
     # ---------------------- for sending email notification  ----------------------
     
-    def email_notif_signupper(self,receiver):
+    def email_notif_enroller(self,receiver):
         """
         builds body and sends email to a receiving email from the email in the config.py file
 
