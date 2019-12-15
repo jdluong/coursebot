@@ -13,5 +13,3 @@ ec2test
 test_sc.png
 signMeUp_ec2/
 *.md
-email_config.py
-config.py
