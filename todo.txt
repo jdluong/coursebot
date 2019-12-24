@@ -1,0 +1,18 @@
+TO DO:
+1) refactor and integrate course.py
+  - enroller
+  - run.py
+  - fix logic
+
+WILL DO:
+1) Make decorators for error handlers?
+2) Page object design?
+3) REDESIGN:
+  - make 'add' and 'drop' objects so that:
+    - you can perform them sequentially
+    - decouple the enrollment actions
+  - would look like:
+
+    Add('12345',['12346','12347','12348'])
+    Drop('23456',['23457','23458'])
+    Add('34567',['34568','34569'])

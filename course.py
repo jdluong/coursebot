@@ -17,11 +17,11 @@ class Course:
     def get_section_type(self):
         return self.section_type
     
-    def sections(self):
+    def get_sections(self):
         return self.sections
     
     def is_lec(self):
-        return self.lect_enr
+        return self.lec_enr
     
     def is_section(self):
         return self.section_enr
@@ -34,3 +34,8 @@ class Course:
     
     def set_section_enr(self,enr):
         self.section_enr = enr
+    
+    def fix_status(self):
+        if not (self.lec_enr and self.section_enr):
+            self.lec_enr = False
+            self.section_enr = False

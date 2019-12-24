@@ -1,15 +1,13 @@
 __pycache__/
-classFullExample.html
-classFullTest.py
-requestsTest.py
-schedule_example.py
-subclassTest.py
-WebReg_error_example.htm
-webregerror.py
-.DS_Store
 error_pages/
-handlerTest.py
-ec2test
-test_sc.png
 signMeUp_ec2/
+no use/
+myenv/
+schedule_example.py
+.DS_Store
 *.md
+email_config.py
+*.pyc
+log.txt
+*.png
+*.htm

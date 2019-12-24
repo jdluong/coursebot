@@ -16,7 +16,7 @@ def check_status(scraper, interval=5):
 			print(f"{scraper.get_className()} is open! Sending email notification...")
 			scraper.email_notif("luongjohnd@gmail.com") # should change to variable later
 			return scraper.get_coursesDict()
-		# print(scraper.get_coursesDict())
+		print(scraper.get_coursesDict())
 		print_progress(tries)
 		sleep(interval*(random()+0.5))
 

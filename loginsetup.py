@@ -18,6 +18,7 @@ class LoginSetup:
         self.driver = None
         self.ERROR_PAGES_PATH = "error_pages/" # change this FOR WINDOWS?
         self.screenshotNum = 0
+        self.testing = True
 
     def credentials_setup(self,isHeadless):
         """
@@ -33,7 +34,7 @@ class LoginSetup:
         """
         sets ucinetid; doesn't require revalidation
         """
-        self.username = input("Enter your UCInetID: ").strip()
+        self.username = input("-> Enter your UCInetID: ").strip()
     
     def set_pw(self):
         """
@@ -42,8 +43,8 @@ class LoginSetup:
         # MAKE THIS MORE SECURE SOMEHOW
         same = False
         while not same:
-            tempPW = getpass.getpass("Enter your password: ")
-            pwCheck = getpass.getpass("Confirm your password: ")
+            tempPW = getpass.getpass("-> Enter your password: ")
+            pwCheck = getpass.getpass("-> Confirm your password: ")
             if tempPW == pwCheck:
                 same = True
                 self._pw = tempPW
@@ -60,7 +61,7 @@ class LoginSetup:
         """
         if not self.driver:
             print("Testing credentials....")
-            self.init_browser(isHeadless,testing=True)
+            self.init_browser(isHeadless)
         else:
             print("Re-testing credentials...")
         self.login_webauth(self.driver)
@@ -78,7 +79,7 @@ class LoginSetup:
         self.driver.quit()
         self.driver = None
 
-    def init_browser(self,isHeadless,testing):
+    def init_browser(self,isHeadless):
         """
         initializes (isHeadless) browser for credentials testing; if headless = False, not headless
 
@@ -94,13 +95,13 @@ class LoginSetup:
                 else:
                     self.driver = webdriver.Chrome()
                 # ----TIMEOUT---- replace line below with timeout
-                self.redir_login(self.driver,testing) 
+                self.redir_login(self.driver) 
                 init = True
             except:
                 print("Something went wrong when using the browser. Retrying...")
                 self.clean_driver()
 
-    def login_status(self,checkLoginSoup,WebRegExtension=None,loginTimer=0):
+    def login_status(self,checkLoginSoup,loginTimer=0):
         """
         uses checkLoginSoup to find what state the login is in and returns success or fail
         can extend to check webreg status with last two arguments
@@ -112,30 +113,22 @@ class LoginSetup:
         rtype: boolean
         """
         if checkLoginSoup.find_all(string=re.compile("Invalid UCInetID or password")):
-            print("Your UCInetID and password are incorrect. Please re-enter your credentials")
-            if WebRegExtension:
-                self.set_ucinetid()
-                self.set_pw()
+            print("Your UCInetID and password are incorrect. ")
             return False
         elif checkLoginSoup.find(id="status"): # too many failed logins, and maybe others?
             print('Unable to log in. "{msg}"'.format(msg=self.build_err_msg(checkLoginSoup,"status")))
-            if WebRegExtension: self.WebRegWait(loginTimer)
             return False
         elif checkLoginSoup.find(class_="webauth-alert"): # general error messages (hopefully)
             print('Unable to log in. "{msg}"'.format(msg=self.build_err_msg(checkLoginSoup,"error-message")))
-            if WebRegExtension: self.WebRegWait(loginTimer)
             return False
         elif checkLoginSoup.find_all(string=re.compile("UCInetID Secure Web Login")):
             print('Unable to log in for some reason.')
             self.save_page(self.driver)
-            if WebRegExtension: self.WebRegWait(loginTimer)
             return False
         else: # means we're in webreg
-            # SHOULD PROBABLY MAKE THIS ELSE STATEMENT INTO A SPECIFIC ELIF, JUST IN CASE
-            if WebRegExtension:
-                WebRegExtension(checkLoginSoup,loginTimer)
-            else:
+            if self.testing:
                 print("Your credentials successfully logged in!\nLogging out safely...")
+                self.testing = False
                 try:
                     find_n_click_xpath(self.driver, elements.TEST_LOGOUT)
                 except:
@@ -143,23 +136,28 @@ class LoginSetup:
                     pass
                 print("------------------------------------------------------------------")
                 self.clean_driver()
-                return True
+            return True
+            
+                
     
-    def redir_login(self,driver,testing):
+    def redir_login(self,driver):
         """
         had to implement because after webreg goes down, "access webreg" doesn't lead to webauth
-        login anymore; so have to find another link to validate; depending on var testing, will
+        login anymore; so have to find another link to validate; self.testing, will
         redirect to diff places
 
         type driver: webdriver
-        type testing: boolean
         """
-        if testing:
-            self.driver.get("https://www.reg.uci.edu/access/student/welcome/")
-            find_n_click_xpath(self.driver,elements.TEST_LOGIN)
-        else:
-            self.driver.get("https://www.reg.uci.edu/registrar/soc/webreg.html")
-            find_n_click_xpath(self.driver,elements.ACCESS_WEBREG_registrar)
+        try:
+            if self.testing:
+                self.driver.get("https://www.reg.uci.edu/access/student/welcome/")
+                find_n_click_xpath(self.driver,elements.TEST_LOGIN)
+            else:
+                self.driver.get("https://www.reg.uci.edu/registrar/soc/webreg.html")
+                find_n_click_xpath(self.driver,elements.ACCESS_WEBREG_registrar)
+        except Exception as e:
+            print("Something went wrong with redirecting to login:")
+            print(f"{type(e)}: {e}")
 
 
     def build_err_msg(self,soup,ID):

@@ -1,6 +1,6 @@
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import NoSuchElementException # for retry login
+from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException # for retry login
 from bs4 import BeautifulSoup
 
 from scraper import Scraper
@@ -14,16 +14,16 @@ import time # for testing
 
 class Enroller(LoginSetup):
 
-    def __init__(self,lectureCodes,disCodes,classNames,loginTimer,headless,timesToTry=None):
+    def __init__(self,lectureCodes,section_codes,classNames,loginTimer,headless=True):
         super().__init__()
         self.classNames = classNames
         self.lectureCodes = lectureCodes
-        self.sectionCodes = disCodes
+        self.sectionCodes = section_codes
         self.loginTimer = loginTimer
         self.lecEnrolled = [False] * len(self.lectureCodes)
-        self.disEnrolled = [False] * len(self.lectureCodes)
+        self.disEnrolled = [False if section else True for section in section_codes ] # for course w/ no section
         self.headless = headless
-        self.timesToTry = timesToTry
+        self.try_count = 100
 
     def set_sectionCodes(self,sectionCodes):
         """
@@ -43,7 +43,7 @@ class Enroller(LoginSetup):
         type initial: bool
         """
         if not self.driver:
-            self.init_browser(self.headless,testing=False)
+            self.init_browser(self.headless)
 
         loggedIn = False
         while not loggedIn:
@@ -54,12 +54,12 @@ class Enroller(LoginSetup):
                 print('Successfully logged into WebReg!')
             except NoSuchElementException: # if login was unsuccessful...
                 checkLoginSoup = BeautifulSoup(self.driver.page_source,'html.parser')
-                self.login_status(checkLoginSoup,self.WebRegExtension,self.loginTimer)
+                self.webreg_login_status(checkLoginSoup,self.loginTimer)
             except:
                 print("Something went very wrong during the login process.")
                 self.save_page(self.driver)
 
-    def enroll(self,needToCheck):
+    def enroll(self):
         """
         method for enrollment process logic for lecture and discussion, returns success/fail
 
@@ -70,8 +70,7 @@ class Enroller(LoginSetup):
         tries = 0
         while False in self.lecEnrolled or False in self.disEnrolled:
             try:
-                if needToCheck:
-                    if tries == self.timesToTry: break
+                if tries == self.try_count: break
                 tries += 1
                 print("\n///\n*** ATTEMPT #{tryNum} ***\n///".format(tryNum=tries))
                 for lectureInd in range(len(self.lectureCodes)):
@@ -82,13 +81,13 @@ class Enroller(LoginSetup):
                             added = self.enroll_dis(prio,lectureInd)
                             if added: break
                         print('------------')
-                self.print_courses_status()
+                # self.print_courses_status()
 
-            except NoSuchElementException: # if ever get logged out for some reason... ASSUMING STILL IN WEBREG
+            except (NoSuchElementException, StaleElementReferenceException): # if ever get logged out for some reason... ASSUMING STILL IN WEBREG
                 self.fix_logic() # fixes lecEnrolled and disEnrolled when we get kicked off
                 print("ERR: Logged out of WebReg, for some reason:")
                 checkSoup = BeautifulSoup(self.driver.page_source,'html.parser')
-                self.login_status(checkSoup,self.WebRegExtension,0) # just in case
+                self.webreg_login_status(checkSoup,0) # just in case
                 self.login() # logs in, handles exception, AND gets us back to add/drop page
                 print("Resuming enrollment process...")
 
@@ -101,24 +100,29 @@ class Enroller(LoginSetup):
 
 # ---------------------- for webregextension in self.login() ----------------------
 
-    def WebRegExtension(self,checkLoginSoup,loginTimer):
+    def webreg_login_status(self,checkLoginSoup,loginTimer=0):
         """
         extends login_status to handle WebReg statuses
 
         type checkLoginSoup: BeautifulSoup
         """
-        if checkLoginSoup.find("div","WebRegErrorMsg"):
-            print('In WebReg, but can\'t log in. "{msg}"'.format(msg=checkLoginSoup.find("div","WebRegErrorMsg").string.strip()))
-            self.WebRegWait(loginTimer)
-            find_n_click_xpath(self.driver,elements.ACCESS_WEBREG_webreg)
-        else: # some other error we can't catch with class='WebRegErrorMsg'
-            print("In WebReg, but can't log in for some reason.")
-            self.save_page(self.driver)
-            self.WebRegWait(loginTimer)
-            try:
-                find_n_click_xpath(self.driver,elements.ACCESS_WEBREG_webreg)
-            except:
+        if LoginSetup.login_status(self,checkLoginSoup,loginTimer):
+            if checkLoginSoup.find_all(string=re.compile('WebReg is experiencing high traffic at this time.')):
+                print('In WebReg, but can\'t log in because of high traffic.')
+                self.WebRegWait(loginTimer)
                 self.driver.refresh()
+            elif checkLoginSoup.find("div","WebRegErrorMsg"):
+                print('In WebReg, but can\'t log in: {msg}"'.format(msg=checkLoginSoup.find("div","WebRegErrorMsg").string.strip()))
+                self.WebRegWait(loginTimer)
+                find_n_click_xpath(self.driver,elements.ACCESS_WEBREG_webreg)
+            else: # some other error we can't catch with class='WebRegErrorMsg'
+                print("In WebReg, but can't log in for some reason.")
+                self.save_page(self.driver)
+                self.WebRegWait(loginTimer)
+                try:
+                    find_n_click_xpath(self.driver,elements.ACCESS_WEBREG_webreg)
+                except:
+                    self.redir_login(self.driver)
 
 # ---------------------- for lecture enrollment in self.enroll(needToCheck) ----------------------
 
@@ -276,3 +280,7 @@ class Enroller(LoginSetup):
         find_n_click_xpath(driver,elements.ADD_RADIO)
         find_n_sendkeys(driver,elements.INPUT_COURSECODE,courseCode)
         find_n_click_xpath(driver,elements.SEND_REQUEST)
+
+if __name__ == '__main__':
+    soup = BeautifulSoup(open('traffic_page.htm','r'),'html.parser')
+    print(soup.find('div','DivLogoutMsg'))

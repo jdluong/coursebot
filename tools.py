@@ -4,7 +4,7 @@ import elements
 
 import smtplib
 import time
-import config
+import email_config
 
 def find_n_click_xpath(driver,element_xpath):
     """
@@ -56,11 +56,11 @@ def email_notif(receiver,subject,body):
         server.starttls()
         # print("Server config finished at:",time.time()-start,"seconds")
         # login to throwaway email
-        server.login(config.EMAIL_ADDRESS,config.PASSWORD)
+        server.login(email_config.EMAIL_ADDRESS,email_config.PASSWORD)
         # print("Login finished at:",time.time()-start,"seconds")
         # create and send email
         message = subject+body
-        server.sendmail(config.EMAIL_ADDRESS,receiver,message)
+        server.sendmail(email_config.EMAIL_ADDRESS,receiver,message)
         # print("Email sent at at:",time.time()-start,"seconds")
         server.quit()
         print("Email sent!")

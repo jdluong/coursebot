@@ -3,7 +3,6 @@ import requests
 import time
 import smtplib
 import json
-import config
 from collections import defaultdict
 
 from tools import email_notif
