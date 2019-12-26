@@ -11,3 +11,4 @@ email_config.py
 log.txt
 *.png
 *.htm
+.vscode/

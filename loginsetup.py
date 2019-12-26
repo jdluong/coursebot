@@ -97,8 +97,10 @@ class LoginSetup:
                 # ----TIMEOUT---- replace line below with timeout
                 self.redir_login(self.driver) 
                 init = True
-            except:
-                print("Something went wrong when using the browser. Retrying...")
+            except Exception as e:
+                print("Something went wrong when using the browser:")
+                print(f"{type(e)}: {e}")
+                print("Retrying...")
                 self.clean_driver()
 
     def login_status(self,checkLoginSoup,loginTimer=0):
@@ -131,8 +133,10 @@ class LoginSetup:
                 self.testing = False
                 try:
                     find_n_click_xpath(self.driver, elements.TEST_LOGOUT)
-                except:
-                    print("Couldn't log out safely. Continuing anyway...")
+                except Exception as e:
+                    print("Couldn't log out safely:")
+                    print(f"{type(e)}: {e}")
+                    print("Continuing anyway...")
                     pass
                 print("------------------------------------------------------------------")
                 self.clean_driver()

@@ -14,6 +14,7 @@ course_codes = lectures[0]+','+','.join(sections[0])
 mode = 'Enroll'
 
 if __name__ == '__main__':
+    
     if mode == 'Scrape':
         scraper = Scraper('COMPSCI','122A',section_type)
 
