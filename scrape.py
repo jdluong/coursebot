@@ -12,14 +12,15 @@ def check_status(scraper, interval=5):
 	while not OPEN:
 		tries += 1
 		scraper.reset()
-		if scraper.scrape_n_check():
-			print(f"{scraper.get_className()} is open! Sending email notification...")
-			scraper.email_notif("luongjohnd@gmail.com") # should change to variable later
+		OPEN = scraper.scrape_n_check()
+		if OPEN:
+			print(f"{scraper.get_name()} is open! Sending email notification...")
+			scraper.email_notif("luongjohnd@gmail.com")
 			return scraper.get_coursesDict()
-		print(scraper.get_coursesDict())
+		# print(scraper.get_coursesDict())
 		print_progress(tries)
 		sleep(interval*(random()+0.5))
 
 def run_scrape(scraper):
-	print("Checking status for {name}... [{currTime}]".format(name=scraper.get_className(),currTime=strftime("%H:%M",localtime())))
+	print("Checking status for {name}... [{currTime}]".format(name=scraper.get_name(),currTime=strftime("%H:%M",localtime())))
 	return check_status(scraper)

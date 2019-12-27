@@ -2,11 +2,10 @@ def enrollment(enroller):
     print("Logging into WebReg...")
     enroller.login()
     print("Beginning enrollment process...")
-    return enroller.enroll() # TAKE OUT THE needToCheck PARAM
+    return enroller.enroll()
 
-
-def run_enrollment(enroller,sections=[]):
-    if sections:
-        enroller.set_sectionCodes([sections])
+def run_enrollment(enroller,*courses):
+    if courses:
+        enroller.add_courses(courses)
     return enrollment(enroller)
     

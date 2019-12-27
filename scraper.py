@@ -8,8 +8,8 @@ from collections import defaultdict
 from tools import email_notif
 
 class Scraper:
-    def __init__(self, deptName, courseNum, section, courseCodes=''):
-        self.deptName = deptName
+    def __init__(self, dept, courseNum, section_type=None, courseCodes=''):
+        self.dept = dept
         self.courseNum = courseNum
         self.BASE_URL = "https://www.reg.uci.edu/perl/WebSoc"
         self.params = {'Submit':'Display Web',
@@ -17,8 +17,8 @@ class Scraper:
                         'ShowComments':'on',
                         'ShowFinals':'on',
                         'Breadth':'ANY',
-                        'Dept':self.deptName,
-                        'CourseNum':self.courseNum,
+                        'Dept':dept,
+                        'CourseNum':courseNum,
                         'Division':'ANY',
                         'CourseCodes':courseCodes,
                         'ClassType':'ALL',
@@ -27,7 +27,7 @@ class Scraper:
                         'CancelledCourses':'Exclude'}
         self.headers = {"User-Agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36"}
         self.coursesDict = defaultdict(list)
-        self.section = section
+        self.section_type = section_type
 
     def get_coursesDict(self):
         """ 
@@ -37,11 +37,14 @@ class Scraper:
         """
         return self.coursesDict
     
-    def get_className(self):
+    def get_name(self):
         """
         *** WINTER BREAK REFACTOR
         """
-        return self.deptName+self.courseNum
+        return self.dept+self.courseNum
+    
+    def get_section_type(self):
+        return self.section_type
     
     def reset(self):
         """
@@ -61,7 +64,7 @@ class Scraper:
         connected = False
         while not connected:
             try:
-                html_page = requests.post(url,data=params,headers=self.headers).text # download html of webpage
+                html_page = requests.post(url,data=params,headers=self.headers).text
                 # html_page.raise_for_status() # for some reason method doesn't work?
                 connected = True
                 return BeautifulSoup(html_page,'html.parser')
@@ -124,24 +127,9 @@ class Scraper:
         """
         *** WINTER BREAK REFACTOR
         """
-        return 'Lec' in self.coursesDict and self.section in self.coursesDict
-
-    def build_secCode(self,coursesDict):
-        """
-        method to build sectionCodes; refactor to queue approach
-
-        coursesDict: dict
-        """
-        sectionCodes = []
-        if 'OPEN' in coursesDict[self.section].values():
-            for code in coursesDict[self.section]:
-                if coursesDict[self.section][code] == 'OPEN':
-                    sectionCodes.insert(0,code)
-                else:
-                    sectionCodes.append(code)
-
-        return sectionCodes
-
+        if self.section_type:
+            return 'Lec' in self.coursesDict and self.section_type in self.coursesDict
+        return 'Lec' in self.coursesDict
 
     def email_notif(self,receiver):
         """
@@ -150,8 +138,8 @@ class Scraper:
         type receiver: string
         """
         # message = 'Subject: {}\n\n{}'.format('email test',body)
-        subject = "Subject: {subject}\n\n".format(subject=self.deptName+" "+self.courseNum+" has an opening!")
-        body = self.deptName+" "+self.courseNum+" has just been updated. Here are the changes:\n\n"
+        subject = "Subject: {subject}\n\n".format(subject=self.dept+" "+self.courseNum+" has an opening!")
+        body = self.dept+" "+self.courseNum+" has just been updated. Here are the changes:\n\n"
         body += json.dumps(self.coursesDict, indent=2)
         email_notif(receiver,subject,body)
 

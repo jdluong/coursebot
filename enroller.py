@@ -18,10 +18,15 @@ class Enroller(LoginSetup):
     def __init__(self,loginTimer,*args,headless=True):
         super().__init__()
         self.loginTimer = loginTimer
-        self.ref_courses = args
+        self.ref_courses = list(args)
         self.courses = deque(args)
         self.headless = headless
         self.try_count = 100
+    
+    def add_courses(self,courses):
+        for course in courses:
+            self.ref_courses.append(course)
+            self.courses.append(course)
 
     def login(self):
         """
@@ -49,7 +54,7 @@ class Enroller(LoginSetup):
 
     def enroll(self):
         """
-        method for enrollment process logic for lecture and discussion, returns success/fail
+        method for enrollment process logic for lecture and section, returns success/fail
 
         rtype: bool
         """
@@ -57,22 +62,24 @@ class Enroller(LoginSetup):
         while self.courses:
             tries += 1
             if tries == self.try_count: break
-            print("\n///\n*** ATTEMPT #{tryNum} ***\n///".format(tryNum=tries))
+            print(f"\n///\n*** ATTEMPT #{tries} ***\n///")
             course = self.courses.popleft()
             try:
                 if not course.is_lec_enr():
-                    if self.enroll_lec(course):
+                    lec_enrolled = self.enroll_lec(course)
+                    if lec_enrolled:
                         course.set_lec_enr(True)
-                    print('-')
+                print('-')
                 if not course.is_section_enr():
-                    if self.enroll_dis(course):
+                    sec_enrolled = self.enroll_sec(course)
+                    if sec_enrolled:
                         course.set_section_enr(True)
-                    print('------------')
+                print('------------')
                 if not course.is_enr():
                     self.courses.append(course)
 
             except (NoSuchElementException, StaleElementReferenceException): # if ever get logged out for some reason... ASSUMING STILL IN WEBREG
-                for course in self.courses: course.fix_status() 
+                self.fix_statuses()
                 print("ERR: Logged out of WebReg, for some reason:")
                 checkSoup = BeautifulSoup(self.driver.page_source,'html.parser')
                 self.webreg_login_status(checkSoup,0)
@@ -82,7 +89,7 @@ class Enroller(LoginSetup):
         print("Logging out safely...")
         self.logout_webreg(self.driver)
         print("------------------------------------------------------------------")
-        for course in self.courses: course.fix_status() # for when half of course is enrolled
+        self.fix_statuses() # for when half of course is enrolled
         return len(self.courses) == 0
 
 
@@ -122,21 +129,22 @@ class Enroller(LoginSetup):
         """
         self.add_course(self.driver,course.get_lecture())
         checkLecSoup = BeautifulSoup(self.driver.page_source,'html.parser')
-        return self.check_lec_status(checkLecSoup,course.get_name())
+        return self.check_lec_status(checkLecSoup,course)
 
 
-    def check_lec_status(self,checkLecSoup,name):
+    def check_lec_status(self,checkLecSoup,course):
         """
         checks the status of lecture after trying to add
 
         type checkLecSoup: BeautifulSoup
         type lectureInd: string
         """
-        if checkLecSoup.find_all(string=re.compile("You must successfully enroll in all co-classes")): # if added before dis
-            print(f"[x] {name} LEC SUCCESS; signed up before discussion")
+        name = course.get_name()
+        if checkLecSoup.find_all(string=re.compile("You must successfully enroll in all co-classes")):
+            print(f"[x] {name} LEC SUCCESS; signed up before section")
             return True
-        elif checkLecSoup.find_all(string=re.compile("you have added")): # if added after dis
-            print(f"[x] {name} LEC SUCCESS; signed up after discussion")
+        elif checkLecSoup.find_all(string=re.compile("you have added")):
+            print(f"[x] {name} LEC SUCCESS; signed up after section")
             return True
         elif checkLecSoup.find_all(string=re.compile("This course is full")): # if unsuccessful
             print(f"[ ] {name}LEC IS FULL; will try again later")
@@ -149,11 +157,11 @@ class Enroller(LoginSetup):
             self.save_page(self.driver)
             return False
     
-    # ---------------------- for discussion enrollment in self.enroll(needToCheck) ----------------------
+    # ---------------------- for section enrollment in self.enroll(needToCheck) ----------------------
 
-    def enroll_dis(self,course):
+    def enroll_sec(self,course):
         """
-        enrolls in current lecture's discussion (singular); returns if that dis was added
+        enrolls in current lecture's section (singular); returns if that section was added
 
         type prio: int
         type lectureInd: int
@@ -163,35 +171,44 @@ class Enroller(LoginSetup):
         """
         for prio,section in enumerate(course.get_sections(),1):
             self.add_course(self.driver,section)
-            checkDisSoup = BeautifulSoup(self.driver.page_source,'html.parser')
-            if self.check_dis_status(checkDisSoup,prio,course.get_name())
+            checkSecSoup = BeautifulSoup(self.driver.page_source,'html.parser')
+            sec_enrolled = self.check_sec_status(checkSecSoup,prio,course)
+            if sec_enrolled:
                 return True
         return False
 
-    def check_dis_status(self,checkDisSoup,prio,name):
+    def check_sec_status(self,checkSecSoup,prio,course):
         """
-        checks the status of the current discussion after attempting to enroll in it
+        checks the status of the current section after attempting to enroll in it
 
-        type checkDisSoup: BeautifulSoup
+        type checkSecSoup: BeautifulSoup
         type prio: int
-        type lectureInd: int
+        type course: Course
         """
-        if checkDisSoup.find_all(string=re.compile("you have added")): # if added after dis
-            print(f"[x] {name} DIS #{prio} SUCCESS; signed up after lecture")
+        name = course.get_name()
+        sec = course.get_section_type()
+        if checkSecSoup.find_all(string=re.compile("you have added")):
+            print(f"[x] {name} {sec} #{prio} SUCCESS; signed up after lecture")
             return True
-        elif checkDisSoup.find_all(string=re.compile("You must successfully enroll in all co-classes")): # if added before dis
-            print(f"[x] {name} DIS #{prio} SUCCESS; signed up before lecture")
+        elif checkSecSoup.find_all(string=re.compile("You must successfully enroll in all co-classes")):
+            print(f"[x] {name} {sec} #{prio} SUCCESS; signed up before lecture")
             return True
-        elif checkDisSoup.find_all(string=re.compile("This course is full")): # if unsuccessful
-            print(f"[ ] {name} DIS #{prio} IS FULL; will continue down prio")
+        elif checkSecSoup.find_all(string=re.compile("This course is full")):
+            print(f"[ ] {name} {sec} #{prio} IS FULL; will continue down prio")
             return False
-        elif checkDisSoup.find("div","WebRegErrorMsg"):
-            print('[ ] {name} DIS #{priority} UNABLE TO ENROLL: "{msg}"'.format(name=name,prio=prio,msg=checkDisSoup.find("div","WebRegErrorMsg").string.strip()))
+        elif checkSecSoup.find("div","WebRegErrorMsg"):
+            print('[ ] {name} {sec} #{prio} UNABLE TO ENROLL: "{msg}"'.format(name=name,sec=sec,prio=prio,msg=checkSecSoup.find("div","WebRegErrorMsg").string.strip()))
             return False
         else:
-            print(f'[ ] {name} DIS #{priority} UNABLE TO ENROLL FOR SOME REASON.')
+            print(f'[ ] {name} {sec} #{prio} UNABLE TO ENROLL FOR SOME REASON.')
             self.save_page(self.driver)
             return False
+    
+    # ---------------------- for fixing logic for all courses  ----------------------
+
+    def fix_statuses(self):
+        for course in self.courses:
+            course.fix_status() 
     
     # ---------------------- for logging out of webreg  ----------------------
 
@@ -222,12 +239,12 @@ class Enroller(LoginSetup):
                 body += course.get_name()+" "
         else:
             subj = "Sucessfully enrolled in all classes!"
-            body = "Successfully enrolled in "+str(self.classNames)
+            body = "Successfully enrolled in "+str(self.ref_courses)
         subject = "Subject: {subject}\n\n".format(subject=subj)
         email_notif(receiver,subject,body)
 
     # ---------------------- all-purpose method for adding courses  ----------------------
-        # maybe this belongs in tools? idk
+    # maybe this belongs in tools? idk
     def add_course(self,driver,courseCode):
         """
         in webreg, adds the course specified with the classCode

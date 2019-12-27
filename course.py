@@ -1,12 +1,17 @@
 class Course:
-    def __init__(self, name, lecture, section_type=None, sections=[]):
+    def __init__(self, name, lecture, sections=[], section_type=''):
         self.name = name
         self.lecture = lecture
         self.section_type = section_type
         self.sections = sections
 
         self.lec_enr = False
-        self.section_enr = False if section_type else True
+        self.section_enr = False if sections else True
+    
+    @staticmethod
+    def build_course():
+        # return Course()
+        pass
     
     def get_name(self):
         return self.name
@@ -37,10 +42,10 @@ class Course:
     
     
     def is_enr(self):
-        return (self.lec_enr and self.section_enr))
+        return (self.lec_enr and self.section_enr)
     
     def fix_status(self):
         if not (self.lec_enr and self.section_enr):
             self.lec_enr = False
-            if section_type:
+            if sections:
                 self.section_enr = False
