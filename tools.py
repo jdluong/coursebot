@@ -5,6 +5,7 @@ import elements
 import smtplib
 import time
 import email_config
+from datetime import datetime
 
 def find_n_click_xpath(driver,element_xpath):
     """
@@ -66,3 +67,8 @@ def email_notif(receiver,subject,body):
         print("Email sent!")
     except smtplib.SMTPException as err:
         print("Email failed to send:",str(err),"\nContinuing anyway...")
+    
+def parse_datetime(date,time):
+    month, day, year = date.split('/')
+    hour, minute = time.split(':')
+    return datetime(*(int(i) for i in [year, month, day, hour, minute]))

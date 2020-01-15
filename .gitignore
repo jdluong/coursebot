@@ -3,12 +3,12 @@ error_pages/
 signMeUp_ec2/
 no use/
 myenv/
-schedule_example.py
+.vscode/
 .DS_Store
-*.md
+schedule_example.py
+email_config.py
 email_config.py
 *.pyc
-log.txt
+*.txt
 *.png
 *.htm
-.vscode/
