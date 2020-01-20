@@ -7,7 +7,7 @@ from collections import defaultdict
 
 from tools import email_notif
 
-class Scraper:
+class Checker:
     def __init__(self, dept, courseNum, section_type=None, courseCodes=''):
         self.dept = dept
         self.courseNum = courseNum
@@ -149,7 +149,7 @@ class Scraper:
         """
         return self.parse_soup_new(self.soupify(self.BASE_URL,self.params))
     
-    def scrape_n_check(self):
+    def run_check(self):
         """
         *** WINTER BREAK REFACTOR
         """
@@ -157,7 +157,7 @@ class Scraper:
         return self.is_open()
 
 if __name__  == '__main__':
-    test = Scraper('COMPSCI','122A','Dis')
+    test = Checker('COMPSCI','122A','Dis')
     # user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36"
     # headers = {"User-Agent":user_agent}
     # r = requests.post(test.BASE_URL,data=test.params,headers=headers)

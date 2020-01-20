@@ -12,5 +12,3 @@ def run_courses_config():
         name = input("Name of course (MATH2D, I&CS31, etc.): ")
         lecture = input("Lecture code of course: ")
         section_type = input("W")
-
-def query_scrape_args():

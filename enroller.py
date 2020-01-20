@@ -4,7 +4,6 @@ from selenium.common.exceptions import NoSuchElementException, StaleElementRefer
 from bs4 import BeautifulSoup
 from collections import deque
 
-from scraper import Scraper
 from loginsetup import LoginSetup
 from tools import find_n_click_name, find_n_click_xpath, find_n_sendkeys, email_notif
 import elements
